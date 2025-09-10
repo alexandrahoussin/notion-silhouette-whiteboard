@@ -14,16 +14,18 @@
     header, footer {
       display: flex;
       justify-content: center;
+      align-items: center;
       gap: 10px;
       padding: 10px;
       background: #fafafa;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      flex-wrap: wrap;
     }
     canvas {
       flex: 1;
       border: 1px solid #ccc;
-      cursor: crosshair;
       background: white;
+      cursor: crosshair;
       display: block;
     }
     button, label {
@@ -39,20 +41,47 @@
       background: #222;
     }
     input[type="file"] { display: none; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888;
+      font-size: 18px;
+      text-align: center;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
 <header>
+  <span><strong>Choisir une silhouette :</strong></span>
   <button onclick="setSilhouette('woman.png')">Femme</button>
   <button onclick="setSilhouette('man.png')">Homme</button>
   <button onclick="setSilhouette('child.png')">Enfant</button>
   <button onclick="setSilhouette('baby.png')">Bébé</button>
+
+  <div class="toolbar">
+    <label for="color">Couleur :</label>
+    <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
+    <label for="size">Largeur :</label>
+    <input type="range" id="size" min="1" max="20" value="2" onchange="setSize(this.value)">
+  </div>
 </header>
 
-<canvas id="board"></canvas>
+<div style="position: relative; flex: 1;">
+  <canvas id="board"></canvas>
+  <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou je peux également choisir une silhouette.</div>
+</div>
 
 <footer>
+  <button onclick="clearDrawing()">Effacer</button>
   <button onclick="download()">Télécharger</button>
   <label for="upload">Importer</label>
   <input type="file" id="upload" accept="image/*" onchange="uploadImage(event)">
@@ -63,59 +92,72 @@
   const ctx = canvas.getContext("2d");
   let drawing = false;
   let silhouette = null;
+  let hasDrawn = false;
+
+  let currentColor = "#000000";
+  let currentSize = 2;
+
+  const placeholder = document.getElementById("placeholder");
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 120;
+    canvas.height = window.innerHeight - 160;
     redraw();
   }
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 
-  // Souris
+  // --- Dessin ---
   canvas.addEventListener("mousedown", (e) => {
     drawing = true;
     ctx.beginPath();
     ctx.moveTo(e.offsetX, e.offsetY);
   });
-  canvas.addEventListener("mouseup", () => drawing = false);
+  canvas.addEventListener("mouseup", () => { drawing = false; });
   canvas.addEventListener("mousemove", (e) => {
     if (!drawing) return;
-    ctx.lineWidth = 2;
+    placeholder.style.display = "none";
+    hasDrawn = true;
+    ctx.lineWidth = currentSize;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#000";
+    ctx.strokeStyle = currentColor;
     ctx.lineTo(e.offsetX, e.offsetY);
     ctx.stroke();
   });
 
-  // Choix silhouette
+  // --- Couleur & taille ---
+  function setColor(c) { currentColor = c; }
+  function setSize(s) { currentSize = s; }
+
+  // --- Silhouette ---
   function setSilhouette(src) {
     silhouette = new Image();
     silhouette.onload = redraw;
     silhouette.src = src;
   }
 
-  // Redessiner
+  // --- Redessiner ---
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (silhouette) {
-      // Calcul du ratio
       const ratio = Math.min(canvas.width / silhouette.width, canvas.height / silhouette.height);
-  
-      // Taille finale
       const newWidth = silhouette.width * ratio;
       const newHeight = silhouette.height * ratio;
-  
-      // Position centrée
       const x = (canvas.width - newWidth) / 2;
       const y = (canvas.height - newHeight) / 2;
-  
       ctx.drawImage(silhouette, x, y, newWidth, newHeight);
     }
+    if (!hasDrawn) placeholder.style.display = "block";
   }
 
+  // --- Effacer ---
+  function clearDrawing() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawn = false;
+    redraw();
+  }
 
-  // Télécharger
+  // --- Télécharger ---
   function download() {
     const link = document.createElement("a");
     link.download = "croquis.png";
@@ -123,7 +165,7 @@
     link.click();
   }
 
-  // Importer une image
+  // --- Importer ---
   function uploadImage(e) {
     const file = e.target.files[0];
     if (!file) return;
