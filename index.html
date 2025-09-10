@@ -99,9 +99,21 @@
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (silhouette) {
-      ctx.drawImage(silhouette, 0, 0, canvas.width, canvas.height);
+      // Calcul du ratio
+      const ratio = Math.min(canvas.width / silhouette.width, canvas.height / silhouette.height);
+  
+      // Taille finale
+      const newWidth = silhouette.width * ratio;
+      const newHeight = silhouette.height * ratio;
+  
+      // Position centrée
+      const x = (canvas.width - newWidth) / 2;
+      const y = (canvas.height - newHeight) / 2;
+  
+      ctx.drawImage(silhouette, x, y, newWidth, newHeight);
     }
   }
+
 
   // Télécharger
   function download() {
