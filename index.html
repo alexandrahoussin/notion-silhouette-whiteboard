@@ -10,7 +10,6 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      background: #fdfdfd;
     }
     header, footer {
       display: flex;
@@ -25,8 +24,9 @@
       border: 1px solid #ccc;
       cursor: crosshair;
       background: white;
+      display: block;
     }
-    button {
+    button, label {
       padding: 6px 12px;
       border: none;
       border-radius: 6px;
@@ -34,25 +34,11 @@
       background: #444;
       color: white;
       font-size: 14px;
-      transition: background 0.2s;
     }
-    button:hover {
+    button:hover, label:hover {
       background: #222;
     }
-    input[type="file"] {
-      display: none;
-    }
-    label {
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: #444;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    label:hover {
-      background: #222;
-    }
+    input[type="file"] { display: none; }
   </style>
 </head>
 <body>
@@ -65,3 +51,79 @@
 </header>
 
 <canvas id="board"></canvas>
+
+<footer>
+  <button onclick="download()">Télécharger</button>
+  <label for="upload">Importer</label>
+  <input type="file" id="upload" accept="image/*" onchange="uploadImage(event)">
+</footer>
+
+<script>
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let silhouette = null;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 120;
+    redraw();
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  // Souris
+  canvas.addEventListener("mousedown", (e) => {
+    drawing = true;
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+  });
+  canvas.addEventListener("mouseup", () => drawing = false);
+  canvas.addEventListener("mousemove", (e) => {
+    if (!drawing) return;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#000";
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+  });
+
+  // Choix silhouette
+  function setSilhouette(src) {
+    silhouette = new Image();
+    silhouette.onload = redraw;
+    silhouette.src = src;
+  }
+
+  // Redessiner
+  function redraw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (silhouette) {
+      ctx.drawImage(silhouette, 0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // Télécharger
+  function download() {
+    const link = document.createElement("a");
+    link.download = "croquis.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  }
+
+  // Importer une image
+  function uploadImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+</script>
+
+</body>
+</html>
