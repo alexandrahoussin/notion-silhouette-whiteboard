@@ -15,7 +15,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 15px;
       padding: 10px;
       background: #fafafa;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -36,6 +36,7 @@
       background: #444;
       color: white;
       font-size: 14px;
+      position: relative;
     }
     button:hover, label:hover {
       background: #222;
@@ -55,23 +56,147 @@
       font-size: 18px;
       text-align: center;
       pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Dropdown menus */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: white;
+      min-width: 220px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1000;
+      border-radius: 6px;
+      top: 100%;
+      left: 0;
+      border: 1px solid #ddd;
+      padding: 5px 0;
+    }
+    .dropdown-content button {
+      color: #333 !important;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      background: white !important;
+      border: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 0;
+      font-size: 14px;
+    }
+    .dropdown-content button:hover {
+      background-color: #f1f1f1 !important;
+      color: #333 !important;
+    }
+    .dropdown.show .dropdown-content {
+      display: block;
+    }
+    .dropdown.show > button {
+      background: #222;
+    }
+    
+    .tool-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px;
+      color: #333;
+    }
+    
+    .tool-item label {
+      background: none;
+      color: #333;
+      padding: 0;
+      font-size: 14px;
+      cursor: default;
+    }
+    
+    .tool-item input[type="color"] {
+      width: 40px;
+      height: 30px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .tool-item input[type="range"] {
+      flex: 1;
+      margin: 0 10px;
+    }
+    
+    .mode-buttons {
+      display: flex;
+      gap: 5px;
+      padding: 8px 16px;
+    }
+    
+    .mode-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #ddd;
+      background: white;
+      color: #333;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    
+    .mode-btn.active {
+      border-color: #007acc;
+      background: #007acc;
+      color: white;
+    }
+    
+    .mode-btn:hover {
+      border-color: #007acc;
+    }
+    
+    .fill-mode {
+      cursor: crosshair !important;
     }
   </style>
 </head>
 <body>
 
 <header>
-  <span><strong>Choisir une silhouette :</strong></span>
-  <button onclick="setSilhouette('woman.png')">Femme</button>
-  <button onclick="setSilhouette('man.png')">Homme</button>
-  <button onclick="setSilhouette('child.png')">Enfant</button>
-  <button onclick="setSilhouette('baby.png')">Bébé</button>
+  <!-- Menu Silhouettes -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)">Ajouter une silhouette ▼</button>
+    <div class="dropdown-content">
+      <button onclick="setSilhouette('woman.png'); closeDropdowns()">Femme</button>
+      <button onclick="setSilhouette('man.png'); closeDropdowns()">Homme</button>
+      <button onclick="setSilhouette('child.png'); closeDropdowns()">Enfant</button>
+      <button onclick="setSilhouette('baby.png'); closeDropdowns()">Bébé</button>
+      <button onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
+    </div>
+  </div>
 
-  <div class="toolbar">
-    <label for="color">Couleur :</label>
-    <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
-    <label for="size">Largeur :</label>
-    <input type="range" id="size" min="1" max="20" value="2" onchange="setSize(this.value)">
+  <!-- Menu Design -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)">Design ▼</button>
+    <div class="dropdown-content">
+      <div class="tool-item">
+        <label>Couleur :</label>
+        <input type="color" id="color" value="#000000" onchange="setColor(this.value)" onclick="event.stopPropagation()">
+      </div>
+      <div class="tool-item">
+        <label>Largeur :</label>
+        <input type="range" id="size" min="1" max="20" value="2" onchange="setSize(this.value)" onclick="event.stopPropagation()">
+        <span id="size-display">2px</span>
+      </div>
+      <div class="mode-buttons">
+        <button class="mode-btn active" id="draw-btn" onclick="setDrawMode(); event.stopPropagation()">Mode dessin</button>
+        <button class="mode-btn" id="fill-btn" onclick="setFillMode(); event.stopPropagation()">Mode remplissage</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -93,11 +218,39 @@
   let drawing = false;
   let silhouette = null;
   let hasDrawn = false;
+  let fillMode = false;
 
   let currentColor = "#000000";
   let currentSize = 2;
 
   const placeholder = document.getElementById("placeholder");
+  const sizeDisplay = document.getElementById("size-display");
+
+  // --- Gestion des menus dropdown ---
+  function toggleDropdown(button) {
+    const dropdown = button.parentElement;
+    const isOpen = dropdown.classList.contains('show');
+    
+    // Fermer tous les dropdowns
+    closeDropdowns();
+    
+    // Ouvrir celui-ci s'il était fermé
+    if (!isOpen) {
+      dropdown.classList.add('show');
+    }
+  }
+  
+  function closeDropdowns() {
+    const dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(dd => dd.classList.remove('show'));
+  }
+  
+  // Fermer les menus quand on clique ailleurs
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) {
+      closeDropdowns();
+    }
+  });
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -109,15 +262,28 @@
 
   // --- Dessin ---
   canvas.addEventListener("mousedown", (e) => {
+    if (fillMode) {
+      floodFill(e.offsetX, e.offsetY, currentColor);
+      return;
+    }
+    
     drawing = true;
     ctx.beginPath();
     ctx.moveTo(e.offsetX, e.offsetY);
   });
-  canvas.addEventListener("mouseup", () => { drawing = false; });
+
+  canvas.addEventListener("mouseup", () => { 
+    drawing = false; 
+  });
+
   canvas.addEventListener("mousemove", (e) => {
-    if (!drawing) return;
-    placeholder.style.display = "none";
-    hasDrawn = true;
+    if (!drawing || fillMode) return;
+    
+    if (!hasDrawn) {
+      hasDrawn = true;
+      updatePlaceholder();
+    }
+    
     ctx.lineWidth = currentSize;
     ctx.lineCap = "round";
     ctx.strokeStyle = currentColor;
@@ -126,28 +292,141 @@
   });
 
   // --- Couleur & taille ---
-  function setColor(c) { currentColor = c; }
-  function setSize(s) { currentSize = s; }
+  function setColor(c) { 
+    currentColor = c; 
+  }
+  
+  function setSize(s) { 
+    currentSize = s; 
+    sizeDisplay.textContent = s + "px";
+  }
+
+  // --- Mode remplissage ---
+  function setDrawMode() {
+    fillMode = false;
+    document.getElementById('draw-btn').classList.add('active');
+    document.getElementById('fill-btn').classList.remove('active');
+    canvas.classList.remove('fill-mode');
+  }
+  
+  function setFillMode() {
+    fillMode = true;
+    document.getElementById('fill-btn').classList.add('active');
+    document.getElementById('draw-btn').classList.remove('active');
+    canvas.classList.add('fill-mode');
+  }
+
+  // --- Algorithme de remplissage amélioré ---
+  function floodFill(startX, startY, fillColor) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const startPos = (Math.floor(startY) * canvas.width + Math.floor(startX)) * 4;
+    
+    if (startPos < 0 || startPos >= pixels.length) return;
+    
+    const startR = pixels[startPos];
+    const startG = pixels[startPos + 1];
+    const startB = pixels[startPos + 2];
+    const startA = pixels[startPos + 3];
+    
+    const fillColorRgb = hexToRgb(fillColor);
+    
+    // Si c'est déjà la même couleur, ne rien faire
+    if (startR === fillColorRgb.r && startG === fillColorRgb.g && 
+        startB === fillColorRgb.b && startA === 255) {
+      return;
+    }
+    
+    // Fonction pour vérifier si une couleur est "similaire" (pour gérer l'antialiasing)
+    function isSimilarColor(r, g, b, a, targetR, targetG, targetB, targetA) {
+      const threshold = 10; // Tolérance pour l'antialiasing
+      return Math.abs(r - targetR) <= threshold && 
+             Math.abs(g - targetG) <= threshold && 
+             Math.abs(b - targetB) <= threshold &&
+             Math.abs(a - targetA) <= threshold;
+    }
+    
+    const stack = [[Math.floor(startX), Math.floor(startY)]];
+    const visited = new Set();
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop();
+      const key = x + ',' + y;
+      
+      if (visited.has(key)) continue;
+      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+      
+      const pos = (y * canvas.width + x) * 4;
+      
+      // Utiliser la fonction de similarité au lieu de l'égalité exacte
+      if (!isSimilarColor(pixels[pos], pixels[pos + 1], pixels[pos + 2], pixels[pos + 3],
+                          startR, startG, startB, startA)) continue;
+      
+      visited.add(key);
+      
+      pixels[pos] = fillColorRgb.r;
+      pixels[pos + 1] = fillColorRgb.g;
+      pixels[pos + 2] = fillColorRgb.b;
+      pixels[pos + 3] = 255;
+      
+      // Ajouter les pixels adjacents (4-connectivité)
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    if (!hasDrawn) {
+      hasDrawn = true;
+      updatePlaceholder();
+    }
+  }
+
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
 
   // --- Silhouette ---
   function setSilhouette(src) {
     silhouette = new Image();
-    silhouette.onload = redraw;
+    silhouette.onload = () => {
+      redraw();
+      updatePlaceholder();
+    };
     silhouette.src = src;
+  }
+  
+  function removeSilhouette() {
+    silhouette = null;
+    redraw();
+    updatePlaceholder();
+  }
+
+  // --- Mise à jour du placeholder ---
+  function updatePlaceholder() {
+    if (hasDrawn || silhouette) {
+      placeholder.style.display = "none";
+    } else {
+      placeholder.style.display = "block";
+    }
   }
 
   // --- Redessiner ---
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (silhouette) {
-      const ratio = Math.min(canvas.width / silhouette.width, canvas.height / silhouette.height);
+      const ratio = Math.min(canvas.width / silhouette.width, canvas.height / silhouette.height) * 0.8;
       const newWidth = silhouette.width * ratio;
       const newHeight = silhouette.height * ratio;
       const x = (canvas.width - newWidth) / 2;
       const y = (canvas.height - newHeight) / 2;
       ctx.drawImage(silhouette, x, y, newWidth, newHeight);
     }
-    if (!hasDrawn) placeholder.style.display = "block";
+    updatePlaceholder();
   }
 
   // --- Effacer ---
@@ -172,7 +451,11 @@
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        hasDrawn = true;
+        updatePlaceholder();
+      };
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
