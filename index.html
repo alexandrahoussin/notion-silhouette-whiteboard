@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Whiteboard Couture</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #fdfdfd;
+    }
+    header, footer {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px;
+      background: #fafafa;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    canvas {
+      flex: 1;
+      border: 1px solid #ccc;
+      cursor: crosshair;
+      background: white;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #444;
+      color: white;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #222;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    label:hover {
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <button onclick="setSilhouette('silhouettes/woman.png')">Femme</button>
+  <button onclick="setSilhouette('silhouettes/man.png')">Homme</button>
+  <button onclick="setSilhouette('silhouettes/child.png')">Enfant</button>
+  <button onclick="setSilhouette('silhouettes/baby.png')">Bébé</button>
+</header>
+
+<canvas id="board"></canvas>
