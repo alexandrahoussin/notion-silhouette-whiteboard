@@ -55,7 +55,6 @@
     }
     input[type="file"] { display:none; }
 
-    /* Dropdown menus */
     .dropdown { position: relative; }
     .dropdown-content {
       display: none;
@@ -169,9 +168,8 @@
     </div>
   </div>
 
-  <!-- Boutons mode -->
-  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
-  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
+  <button id="draw-btn" onclick="setDrawMode()">✏️ Mode dessin</button>
+  <button id="fill-btn" onclick="setFillMode()">🪣 Mode remplissage</button>
 </header>
 
 <div style="position:relative; flex:1; display:flex; justify-content:center; align-items:center;">
@@ -180,18 +178,19 @@
 </div>
 
 <footer>
-  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
-  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
-  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
-  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
-  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
-  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
+  <button onclick="undo()">↩️ Annuler</button>
+  <button onclick="redo()">↪️ Rétablir</button>
+  <button onclick="clearDrawing()">🧹 Effacer</button>
+  <button onclick="download()">⬇️ Télécharger</button>
+  <button onclick="zoomIn()">🔍 +</button>
+  <button onclick="zoomOut()">🔍 -</button>
+  <button onclick="setPanMode()">✋ Pan</button>
 </footer>
 
 <script>
 const canvas=document.getElementById("board");
 const ctx=canvas.getContext("2d");
-let drawing=false, fillMode=false;
+let drawing=false, fillMode=false, panMode=false;
 let silhouette=null, hasDrawn=false;
 let currentColor="#000000", currentSize=2;
 let fillPattern=null, patternSize=50, fillModeType="color", fillColor="#ff0000";
@@ -202,7 +201,7 @@ const placeholder=document.getElementById("placeholder");
 let scale=1, offsetX=0, offsetY=0;
 let isPanning=false, panStart={x:0,y:0};
 
-// canvas resize
+// resize
 function resizeCanvas(){
   canvas.width=window.innerWidth*0.8;
   canvas.height=window.innerHeight*0.7;
@@ -211,7 +210,6 @@ function resizeCanvas(){
 window.addEventListener("resize",resizeCanvas);
 resizeCanvas();
 
-// dropdowns
 function toggleDropdown(b){
   const dd=b.parentElement;
   document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));
@@ -223,20 +221,21 @@ function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.cl
 canvas.addEventListener("mousedown",e=>{
   const pos=getTransformedPoint(e.offsetX,e.offsetY);
 
+  if(panMode){ // mode déplacement
+    isPanning=true;
+    panStart={x:e.offsetX,y:e.offsetY};
+    return;
+  }
+
   if(fillMode){
     floodFill(pos.x,pos.y);
     saveState();
     closeDropdowns();
     return;
   }
-  if(e.button===0){ // gauche = dessiner
-    drawing=true;
-    ctx.beginPath();
-    ctx.moveTo(pos.x,pos.y);
-  } else if(e.button===1){ // molette = pan
-    isPanning=true;
-    panStart={x:e.offsetX,y:e.offsetY};
-  }
+  drawing=true;
+  ctx.beginPath();
+  ctx.moveTo(pos.x,pos.y);
 });
 canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState();});
 canvas.addEventListener("mousemove",e=>{
@@ -246,7 +245,7 @@ canvas.addEventListener("mousemove",e=>{
     redraw();
     return;
   }
-  if(!drawing||fillMode) return;
+  if(!drawing||fillMode||panMode) return;
   hasDrawn=true; updatePlaceholder();
   const pos=getTransformedPoint(e.offsetX,e.offsetY);
   ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
@@ -261,7 +260,7 @@ canvas.addEventListener("touchstart",e=>{
   }
 });
 canvas.addEventListener("touchmove",e=>{
-  if(touchStart && e.touches.length===1){
+  if(panMode && touchStart && e.touches.length===1){
     const dx=e.touches[0].clientX-touchStart.x;
     const dy=e.touches[0].clientY-touchStart.y;
     offsetX+=dx;
@@ -275,18 +274,9 @@ canvas.addEventListener("touchend",()=>{touchStart=null;});
 // outils
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
-function setDrawMode(){
-  fillMode=false;
-  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
-  document.getElementById("fill-btn").style.background= "var(--btn)";
-  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
-}
-function setFillMode(){
-  fillMode=true;
-  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
-  document.getElementById("draw-btn").style.background= "var(--btn)";
-  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
-}
+function setDrawMode(){fillMode=false; panMode=false;}
+function setFillMode(){fillMode=true; panMode=false;}
+function setPanMode(){panMode=true; fillMode=false; drawing=false;}
 
 // undo/redo
 function saveState(){
@@ -312,9 +302,8 @@ function redo(){
 
 // fill
 function setFillColor(c){ fillColor=c; }
-function setFillModeColor(){ fillModeType="color"; document.getElementById("fillColorBtn").classList.add("active-option"); document.getElementById("fillPatternBtn").classList.remove("active-option"); }
-function setFillModePattern(){ fillModeType="pattern"; document.getElementById("fillPatternBtn").classList.add("active-option"); document.getElementById("fillColorBtn").classList.remove("active-option"); }
-
+function setFillModeColor(){ fillModeType="color"; }
+function setFillModePattern(){ fillModeType="pattern"; }
 function loadFillPattern(e){
   let f=e.target.files[0]; if(!f) return;
   let r=new FileReader();
