@@ -1,182 +1,409 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Whiteboard Couture — Zoom/Pan corrigé</title>
-<style>
-  :root {
-    --btn: #E0EBDB;
-    --btn-hover: #FE6FA8;
-    --panel: #ffffff;
-    --text: #333;
-    --dropdown-w: 280px;
-  }
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:#fafafa;color:var(--text);}
-  .app{display:flex;flex-direction:column;height:100vh;gap:8px;padding:8px;box-sizing:border-box;}
+  <meta charset="UTF-8">
+  <title>Whiteboard Couture</title>
+  <style>
+    :root {
+      --btn:#E0EBDB;
+      --btn-hover:#FE6FA8;
+    }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header, footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #fafafa;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      flex-wrap: wrap;
+      z-index: 10;
+    }
+    canvas {
+      flex: 1;
+      border: 1px solid #ccc;
+      background: white;
+      display: block;
+      cursor: crosshair;
+    }
+    button, label {
+      background:var(--btn);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      color:#666;
+      font-size:14px;
+      min-width:120px;
+      height:40px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+    button img, label img { width:18px; height:18px; }
+    button:hover, label:hover {
+      background:var(--btn-hover);
+      color:white;
+    }
+    input[type="file"] { display:none; }
 
-  header, footer{
-    display:flex;align-items:center;justify-content:center;gap:10px;
-    background:var(--panel);padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);
-    flex-wrap:wrap;
-  }
+    /* Dropdown menus */
+    .dropdown { position: relative; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background: white;
+      min-width: 220px;
+      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+      border:1px solid #ddd;
+      border-radius:6px;
+      z-index:1000;
+      top:100%;
+      left:0;
+    }
+    .dropdown-content button, .dropdown-content label {
+      background: white !important;
+      color: #333 !important;
+      width: 100%;
+      border-radius:0;
+      text-align:left;
+      font-size:14px;
+      padding:10px 14px;
+    }
+    .dropdown-content button:hover, .dropdown-content label:hover {
+      background: #f1f1f1 !important;
+      color:#000 !important;
+    }
+    .dropdown.show .dropdown-content { display:block; }
 
-  .btn, label.btn {
-    background:var(--btn); border:0; padding:8px 12px; border-radius:8px;
-    min-width:120px; height:40px; display:inline-flex; align-items:center; justify-content:center;
-    gap:8px; cursor:pointer; font-size:14px; color:#444;
-  }
-  .btn img{ width:18px; height:18px; }
-  .btn:hover{ background:var(--btn-hover); color:white; }
+    .tool-item {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px 12px;
+    }
+    .tool-item label { font-size:13px; color:#333; }
+    .tool-item input[type="color"], 
+    .tool-item select {
+      margin-left:10px;
+    }
 
-  .canvas-wrap{ flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
-  canvas{
-    background:white; border-radius:8px; box-shadow:0 6px 22px rgba(0,0,0,0.06);
-    max-width: calc(100% - 40px); max-height: calc(100% - 40px); touch-action:none;
-    display:block;
-  }
-  #placeholder{
-    position:absolute; z-index:10; pointer-events:none; text-align:center; color:#888; font-size:16px;
-    padding:8px 14px; background:rgba(255,255,255,0.85); border-radius:8px;
-  }
-</style>
+    .active-option {
+      border:2px solid var(--btn-hover);
+      border-radius:6px;
+      padding:2px;
+    }
+
+    #placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888;
+      font-size: 18px;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <button class="btn" onclick="enableDrawMode()">✏️ Mode dessin</button>
-      <button class="btn" onclick="enableFillMode()">🪣 Mode remplissage</button>
-      <button class="btn" onclick="zoomIn()">🔍 +</button>
-      <button class="btn" onclick="zoomOut()">🔍 -</button>
-      <button class="btn" onclick="resetView()">🔄 Réinitialiser vue</button>
-    </header>
 
-    <div class="canvas-wrap">
-      <canvas id="board"></canvas>
-      <div id="placeholder">✏️ Ici je laisse place à mon imagination — choisis une silhouette ou commence à dessiner</div>
+<header>
+  <!-- Menu Silhouettes -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
+    <div class="dropdown-content">
+      <button onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
+      <button onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
+      <button onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
+      <button onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
+      <label><input type="file" onchange="uploadSilhouette(event)">Ajouter une image</label>
+      <button onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
     </div>
-
-    <footer>
-      <button class="btn" onclick="undo()">↩️ Annuler</button>
-      <button class="btn" onclick="redo()">↪️ Rétablir</button>
-      <button class="btn" onclick="clearBoard()">🧹 Effacer</button>
-      <button class="btn" onclick="downloadPNG()">⬇️ Télécharger</button>
-    </footer>
   </div>
 
+  <!-- Menu Dessin -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Dessin ▼</button>
+    <div class="dropdown-content">
+      <div class="tool-item">
+        <label>Couleur</label>
+        <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
+      </div>
+      <div class="tool-item">
+        <label>Largeur</label>
+        <input type="range" min="1" max="20" value="2" onchange="setSize(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Remplissage -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
+    <div class="dropdown-content">
+      <div class="tool-item">
+        <button id="fillColorBtn" onclick="setFillModeColor(); closeDropdowns()">Couleur</button>
+        <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
+      </div>
+      <div class="tool-item">
+        <button id="fillPatternBtn" onclick="setFillModePattern(); closeDropdowns()">Motif</button>
+        <input type="file" id="patternInput" accept="image/*" onchange="loadFillPattern(event)">
+        <canvas id="patternPreview" width="24" height="24" style="border:1px solid #ccc;"></canvas>
+      </div>
+      <div class="tool-item">
+        <label>Taille motif</label>
+        <select id="patternSize" onchange="setPatternSize(this.value)">
+          <option value="25">25px</option>
+          <option value="50" selected>50px</option>
+          <option value="100">100px</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boutons mode -->
+  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
+  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
+</header>
+
+<div style="position:relative; flex:1; display:flex; justify-content:center; align-items:center;">
+  <canvas id="board"></canvas>
+  <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
+</div>
+
+<footer>
+  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
+  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
+  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
+  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
+  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
+</footer>
+
 <script>
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
-const placeholder = document.getElementById('placeholder');
-let dpr = Math.max(1, window.devicePixelRatio || 1);
+const canvas=document.getElementById("board");
+const ctx=canvas.getContext("2d");
+let drawing=false, fillMode=false;
+let silhouette=null, hasDrawn=false;
+let currentColor="#000000", currentSize=2;
+let fillPattern=null, patternSize=50, fillModeType="color", fillColor="#ff0000";
+let undoStack=[], redoStack=[];
+const placeholder=document.getElementById("placeholder");
 
-let mode = 'draw'; 
-let currentColor = '#000000';
-let currentSize = 2;
-let hasDrawn = false;
+// zoom & pan
+let scale=1, offsetX=0, offsetY=0;
+let isPanning=false, panStart={x:0,y:0};
 
-/* Undo/redo */
-let undoStack = [], redoStack = [];
-function pushState(){
-  try{ undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); redoStack=[]; }
-  catch(e){}
-}
-function undo(){
-  if(!undoStack.length) return;
-  let last = undoStack.pop();
-  redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
-  ctx.putImageData(last,0,0);
-}
-function redo(){
-  if(!redoStack.length) return;
-  let next = redoStack.pop();
-  undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
-  ctx.putImageData(next,0,0);
-}
-
-/* Zoom / Pan state */
-let zoomLevel = 1;
-let panX = 0, panY = 0;
-let isPanning = false;
-let startPan = {x:0,y:0};
-
-function applyTransform(){
-  ctx.setTransform(dpr,0,0,dpr,0,0); // reset
-  ctx.scale(zoomLevel, zoomLevel);
-  ctx.translate(panX, panY);
+// canvas resize
+function resizeCanvas(){
+  canvas.width=window.innerWidth*0.8;
+  canvas.height=window.innerHeight*0.7;
   redraw();
 }
-function zoomIn(){ zoomLevel *= 1.2; applyTransform(); }
-function zoomOut(){ zoomLevel /= 1.2; applyTransform(); }
-function resetView(){ zoomLevel=1; panX=0; panY=0; applyTransform(); }
-
-/* Resize */
-function resizeCanvas(){
-  const cssW = Math.min(720, window.innerWidth-40);
-  const cssH = Math.min(720, window.innerHeight-200);
-  canvas.style.width = cssW+"px";
-  canvas.style.height = cssH+"px";
-  canvas.width = cssW * dpr;
-  canvas.height = cssH * dpr;
-  applyTransform();
-}
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener("resize",resizeCanvas);
 resizeCanvas();
 
-/* Drawing */
-let drawing = false;
-function getCanvasPos(evt){
-  const rect = canvas.getBoundingClientRect();
-  const x = (evt.clientX-rect.left)/rect.width*canvas.width/dpr;
-  const y = (evt.clientY-rect.top)/rect.height*canvas.height/dpr;
-  return {x:(x/zoomLevel - panX), y:(y/zoomLevel - panY)};
+// dropdowns
+function toggleDropdown(b){
+  const dd=b.parentElement;
+  document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));
+  dd.classList.toggle("show");
 }
+function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));}
 
-canvas.addEventListener('pointerdown', (e)=>{
-  if(e.button===1 || e.button===2 || e.shiftKey){ // pan avec clic droit ou shift
+// dessin
+canvas.addEventListener("mousedown",e=>{
+  const pos=getTransformedPoint(e.offsetX,e.offsetY);
+
+  if(fillMode){
+    floodFill(pos.x,pos.y);
+    saveState();
+    closeDropdowns();
+    return;
+  }
+  if(e.button===0){ // gauche = dessiner
+    drawing=true;
+    ctx.beginPath();
+    ctx.moveTo(pos.x,pos.y);
+  } else if(e.button===1){ // molette = pan
     isPanning=true;
-    startPan={x:e.clientX,y:e.clientY};
-    return;
+    panStart={x:e.offsetX,y:e.offsetY};
   }
-  drawing=true;
-  pushState();
-  const pos=getCanvasPos(e);
-  ctx.beginPath();
-  ctx.lineCap="round"; ctx.lineJoin="round";
-  ctx.strokeStyle=currentColor; ctx.lineWidth=currentSize;
-  ctx.moveTo(pos.x,pos.y);
 });
-canvas.addEventListener('pointermove', (e)=>{
+canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState();});
+canvas.addEventListener("mousemove",e=>{
   if(isPanning){
-    panX += (e.clientX-startPan.x)/(50*zoomLevel);
-    panY += (e.clientY-startPan.y)/(50*zoomLevel);
-    startPan={x:e.clientX,y:e.clientY};
-    applyTransform();
+    offsetX+=e.movementX;
+    offsetY+=e.movementY;
+    redraw();
     return;
   }
-  if(!drawing) return;
-  const pos=getCanvasPos(e);
-  ctx.lineTo(pos.x,pos.y);
-  ctx.stroke();
-  hasDrawn=true; placeholder.style.display="none";
+  if(!drawing||fillMode) return;
+  hasDrawn=true; updatePlaceholder();
+  const pos=getTransformedPoint(e.offsetX,e.offsetY);
+  ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
+  ctx.lineTo(pos.x,pos.y); ctx.stroke();
 });
-window.addEventListener('pointerup', ()=>{ drawing=false; isPanning=false; });
 
-/* Modes */
-function enableDrawMode(){ mode='draw'; canvas.style.cursor="crosshair"; }
-function enableFillMode(){ mode='fill'; canvas.style.cursor="cell"; }
+// tactile pan
+let touchStart=null;
+canvas.addEventListener("touchstart",e=>{
+  if(e.touches.length===1){
+    touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  }
+});
+canvas.addEventListener("touchmove",e=>{
+  if(touchStart && e.touches.length===1){
+    const dx=e.touches[0].clientX-touchStart.x;
+    const dy=e.touches[0].clientY-touchStart.y;
+    offsetX+=dx;
+    offsetY+=dy;
+    touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    redraw();
+  }
+});
+canvas.addEventListener("touchend",()=>{touchStart=null;});
 
-/* Clear/download */
-function clearBoard(){ pushState(); ctx.clearRect(-panX, -panY, canvas.width, canvas.height); }
-function downloadPNG(){
-  const a=document.createElement("a");
-  a.href=canvas.toDataURL("image/png");
-  a.download="croquis.png"; a.click();
+// outils
+function setColor(c){currentColor=c;}
+function setSize(s){currentSize=s;}
+function setDrawMode(){
+  fillMode=false;
+  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
+  document.getElementById("fill-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
+}
+function setFillMode(){
+  fillMode=true;
+  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
+  document.getElementById("draw-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
 }
 
-function redraw(){ /* Ici si tu veux redessiner silhouette */ }
+// undo/redo
+function saveState(){
+  undoStack.push(canvas.toDataURL());
+  redoStack=[];
+}
+function undo(){
+  if(undoStack.length<1) return;
+  redoStack.push(canvas.toDataURL());
+  let last=undoStack.pop();
+  let img=new Image();
+  img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); applyTransform();};
+  img.src=last;
+}
+function redo(){
+  if(redoStack.length<1) return;
+  undoStack.push(canvas.toDataURL());
+  let last=redoStack.pop();
+  let img=new Image();
+  img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); applyTransform();};
+  img.src=last;
+}
 
-pushState();
+// fill
+function setFillColor(c){ fillColor=c; }
+function setFillModeColor(){ fillModeType="color"; document.getElementById("fillColorBtn").classList.add("active-option"); document.getElementById("fillPatternBtn").classList.remove("active-option"); }
+function setFillModePattern(){ fillModeType="pattern"; document.getElementById("fillPatternBtn").classList.add("active-option"); document.getElementById("fillColorBtn").classList.remove("active-option"); }
+
+function loadFillPattern(e){
+  let f=e.target.files[0]; if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{
+    let img=new Image();
+    img.onload=()=>{
+      const pc=document.createElement("canvas");
+      pc.width=patternSize; pc.height=patternSize;
+      pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
+      fillPattern=pc;
+      let prev=document.getElementById("patternPreview");
+      let pctx=prev.getContext("2d");
+      pctx.clearRect(0,0,24,24);
+      pctx.drawImage(pc,0,0,24,24);
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+}
+function setPatternSize(s){patternSize=parseInt(s);}
+
+function floodFill(x,y){
+  const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const pixels=imageData.data;
+  const startPos=(Math.floor(y)*canvas.width+Math.floor(x))*4;
+  const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
+  const stack=[[Math.floor(x),Math.floor(y)]];
+  const visited=new Set();
+  while(stack.length){
+    const [cx,cy]=stack.pop();
+    if(cx<0||cy<0||cx>=canvas.width||cy>=canvas.height) continue;
+    const pos=(cy*canvas.width+cx)*4;
+    const key=cx+","+cy;
+    if(visited.has(key)) continue;
+    if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
+    visited.add(key);
+
+    if(fillModeType==="pattern" && fillPattern){
+      const px=(cx%patternSize), py=(cy%patternSize);
+      const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
+      pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
+    } else {
+      const rgb=hexToRgb(fillColor);
+      pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
+    }
+
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+  ctx.putImageData(imageData,0,0);
+  hasDrawn=true; updatePlaceholder();
+}
+
+// silhouette
+function setSilhouette(src){silhouette=new Image(); silhouette.onload=redraw; silhouette.src=src;}
+function removeSilhouette(){silhouette=null; redraw();}
+function uploadSilhouette(e){
+  let f=e.target.files[0]; if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{setSilhouette(ev.target.result);};
+  r.readAsDataURL(f);
+}
+
+// redraw
+function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
+function redraw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  applyTransform();
+  if(silhouette){
+    const ratio=Math.min(canvas.width/silhouette.width,canvas.height/silhouette.height)*0.8;
+    let w=silhouette.width*ratio, h=silhouette.height*ratio;
+    ctx.drawImage(silhouette,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+  }
+  updatePlaceholder();
+}
+function clearDrawing(){ctx.clearRect(0,0,canvas.width,canvas.height); hasDrawn=false; redraw();}
+function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
+
+// zoom boutons
+function zoomIn(){ scale*=1.2; redraw(); }
+function zoomOut(){ scale/=1.2; redraw(); }
+
+function applyTransform(){ ctx.setTransform(scale,0,0,scale,offsetX,offsetY); }
+function getTransformedPoint(x,y){ const invScale=1/scale; return {x:(x-offsetX)*invScale, y:(y-offsetY)*invScale}; }
+
+function hexToRgb(hex){
+  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
+}
 </script>
 </body>
 </html>
