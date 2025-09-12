@@ -25,8 +25,14 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       flex-wrap: wrap;
     }
-    canvas {
+    .canvas-container {
       flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    canvas {
       border: 1px solid #ccc;
       background: white;
       display: block;
@@ -109,6 +115,7 @@
       margin-left:8px;
       background-size:cover;
       background-position:center;
+      cursor: pointer;
     }
 
     #placeholder {
@@ -164,8 +171,8 @@
       </div>
       <div class="tool-item">
         <button id="patternModeBtn" onclick="setFillModePattern()">Motif</button>
-        <input type="file" onchange="loadFillPattern(event)">
-        <div id="patternPreview"></div>
+        <div id="patternPreview" onclick="document.getElementById('patternInput').click()"></div>
+        <input type="file" id="patternInput" accept="image/*" onchange="loadFillPattern(event)">
       </div>
       <div class="tool-item">
         <label>Taille motif</label>
@@ -183,7 +190,7 @@
   <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
 </header>
 
-<div style="position:relative; flex:1;">
+<div class="canvas-container">
   <canvas id="board"></canvas>
   <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
 </div>
