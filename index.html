@@ -31,6 +31,7 @@
       justify-content: center;
       align-items: center;
       position: relative;
+      overflow: hidden;
     }
     canvas {
       border: 1px solid #ccc;
@@ -59,10 +60,7 @@
     }
     input[type="file"] { display:none; }
 
-    /* Dropdown menus */
-    .dropdown {
-      position: relative;
-    }
+    .dropdown { position: relative; }
     .dropdown-content {
       display: none;
       position: absolute;
@@ -72,8 +70,7 @@
       border:1px solid #ddd;
       border-radius:6px;
       z-index:1000;
-      top:100%;
-      left:0;
+      top:100%; left:0;
     }
     .dropdown-content button, .dropdown-content label {
       background: white !important;
@@ -98,9 +95,7 @@
     }
     .tool-item label { font-size:13px; color:#333; }
     .tool-item input[type="color"], 
-    .tool-item select {
-      margin-left:10px;
-    }
+    .tool-item select { margin-left:10px; }
 
     .active-option {
       border:2px solid var(--btn-hover) !important;
@@ -120,8 +115,7 @@
 
     #placeholder {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       color: #888;
       font-size: 18px;
@@ -133,7 +127,7 @@
 <body>
 
 <header>
-  <!-- Menu Silhouettes -->
+  <!-- Silhouettes -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
     <div class="dropdown-content">
@@ -146,7 +140,7 @@
     </div>
   </div>
 
-  <!-- Menu Dessin -->
+  <!-- Dessin -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Dessin ▼</button>
     <div class="dropdown-content">
@@ -161,7 +155,7 @@
     </div>
   </div>
 
-  <!-- Menu Remplissage -->
+  <!-- Remplissage -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
@@ -185,7 +179,7 @@
     </div>
   </div>
 
-  <!-- Boutons mode -->
+  <!-- Modes -->
   <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
   <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
 </header>
@@ -200,9 +194,9 @@
   <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
   <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
   <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
-  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
-  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
-  <button onclick="setPanMode()"><img src="icons/move.svg"> Se déplacer</button>
+  <button onclick="zoomIn()">🔍 +</button>
+  <button onclick="zoomOut()">🔍 -</button>
+  <button onclick="togglePanMode()">🖐️ Déplacer</button>
 </footer>
 
 <script>
@@ -215,13 +209,19 @@ let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
 const placeholder=document.getElementById("placeholder");
 
-// zoom & pan
+// buffer pour garder le dessin
+const buffer=document.createElement("canvas");
+const bctx=buffer.getContext("2d");
+
+// zoom et déplacement
 let scale=1, offsetX=0, offsetY=0;
-let isPanning=false, panStart={x:0,y:0};
+let isPanning=false, startPan={x:0,y:0};
 
 function resizeCanvas(){
   canvas.width=window.innerWidth*0.8;
   canvas.height=window.innerHeight*0.6;
+  buffer.width=canvas.width;
+  buffer.height=canvas.height;
   redraw();
 }
 window.addEventListener("resize",resizeCanvas);
@@ -237,120 +237,80 @@ function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.cl
 // dessin
 canvas.addEventListener("mousedown",e=>{
   closeDropdowns();
-  const pos=getTransformedPoint(e.offsetX,e.offsetY);
-
-  if(panMode){
-    isPanning=true;
-    panStart={x:e.offsetX,y:e.offsetY};
-    return;
-  }
-
-  if(fillMode){ floodFill(pos.x,pos.y); saveState(); return; }
-  drawing=true; ctx.beginPath(); ctx.moveTo(pos.x,pos.y);
+  if(panMode){isPanning=true; startPan={x:e.clientX,y:e.clientY}; return;}
+  if(fillMode){ floodFill(e.offsetX,e.offsetY); saveState(); return; }
+  drawing=true;
+  bctx.beginPath();
+  const {x,y}=toBufferCoords(e.offsetX,e.offsetY);
+  bctx.moveTo(x,y);
 });
-canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState();});
+canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState(); redraw();});
 canvas.addEventListener("mousemove",e=>{
-  if(isPanning){
-    offsetX+=e.movementX;
-    offsetY+=e.movementY;
+  if(panMode && isPanning){
+    offsetX += (e.clientX-startPan.x);
+    offsetY += (e.clientY-startPan.y);
+    startPan={x:e.clientX,y:e.clientY};
     redraw();
     return;
   }
-  if(!drawing||fillMode||panMode) return;
+  if(!drawing||fillMode) return;
   hasDrawn=true; updatePlaceholder();
-  const pos=getTransformedPoint(e.offsetX,e.offsetY);
-  ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
-  ctx.lineTo(pos.x,pos.y); ctx.stroke();
+  bctx.lineWidth=currentSize; bctx.lineCap="round"; bctx.strokeStyle=currentColor;
+  const {x,y}=toBufferCoords(e.offsetX,e.offsetY);
+  bctx.lineTo(x,y); bctx.stroke();
+  redraw();
 });
 
-// outils
+function toBufferCoords(x,y){
+  return {x:(x-offsetX)/scale, y:(y-offsetY)/scale};
+}
+
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
 function setFillColor(c){fillColor=c;}
 
-function setDrawMode(){
-  fillMode=false; panMode=false;
-  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
-  document.getElementById("fill-btn").style.background= "var(--btn)";
-  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
-}
-function setFillMode(){
-  fillMode=true; panMode=false;
-  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
-  document.getElementById("draw-btn").style.background= "var(--btn)";
-  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
-}
-function setPanMode(){
-  panMode=true; fillMode=false; drawing=false;
-  document.getElementById("fill-btn").style.background= "var(--btn)";
-  document.getElementById("draw-btn").style.background= "var(--btn)";
-  canvas.style.cursor="grab";
-}
+function setDrawMode(){fillMode=false; panMode=false;}
+function setFillMode(){fillMode=true; panMode=false;}
+function togglePanMode(){panMode=!panMode;}
+
+function zoomIn(){scale*=1.2; redraw();}
+function zoomOut(){scale/=1.2; redraw();}
 
 // Undo/Redo
 function saveState(){
-  undoStack.push(canvas.toDataURL());
+  undoStack.push(buffer.toDataURL());
   redoStack=[];
 }
 function undo(){
   if(undoStack.length<1) return;
-  redoStack.push(canvas.toDataURL());
+  redoStack.push(buffer.toDataURL());
   let last=undoStack.pop();
   let img=new Image();
-  img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); applyTransform();};
+  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
   img.src=last;
 }
 function redo(){
   if(redoStack.length<1) return;
-  undoStack.push(canvas.toDataURL());
+  undoStack.push(buffer.toDataURL());
   let last=redoStack.pop();
   let img=new Image();
-  img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); applyTransform();};
+  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
   img.src=last;
 }
 
-// Remplissage
-function setFillModeColor(){
-  usePattern=false;
-  document.getElementById("colorModeBtn").classList.add("active-option");
-  document.getElementById("patternModeBtn").classList.remove("active-option");
-}
-function setFillModePattern(){
-  usePattern=true;
-  document.getElementById("patternModeBtn").classList.add("active-option");
-  document.getElementById("colorModeBtn").classList.remove("active-option");
-}
-
-function loadFillPattern(e){
-  let f=e.target.files[0]; if(!f) return;
-  let r=new FileReader();
-  r.onload=ev=>{
-    let img=new Image();
-    img.onload=()=>{
-      const pc=document.createElement("canvas");
-      pc.width=patternSize; pc.height=patternSize;
-      pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
-      fillPattern=pc;
-      document.getElementById("patternPreview").style.backgroundImage=`url(${ev.target.result})`;
-      setFillModePattern();
-    };
-    img.src=ev.target.result;
-  };
-  r.readAsDataURL(f);
-}
-function setPatternSize(s){patternSize=parseInt(s);}
-
+// flood fill identique, appliqué sur buffer
 function floodFill(x,y){
-  const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const {x:bx,y:by}=toBufferCoords(x,y);
+  const imageData=bctx.getImageData(0,0,buffer.width,buffer.height);
   const pixels=imageData.data;
-  const startPos=(Math.floor(y)*canvas.width+Math.floor(x))*4;
+  const startPos=(Math.floor(by)*buffer.width+Math.floor(bx))*4;
   const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
-  const stack=[[Math.floor(x),Math.floor(y)]];
+  const stack=[[Math.floor(bx),Math.floor(by)]];
   const visited=new Set();
   while(stack.length){
     const [cx,cy]=stack.pop();
-    if(cx<0||cy<0||cx>=canvas.width||cy>=canvas.height) continue;
-    const pos=(cy*canvas.width+cx)*4;
+    if(cx<0||cy<0||cx>=buffer.width||cy>=buffer.height) continue;
+    const pos=(cy*buffer.width+cx)*4;
     const key=cx+","+cy;
     if(visited.has(key)) continue;
     if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
@@ -364,19 +324,20 @@ function floodFill(x,y){
       const rgb=hexToRgb(fillColor);
       pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
     }
-
     stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
   }
-  ctx.putImageData(imageData,0,0);
+  bctx.putImageData(imageData,0,0);
   hasDrawn=true; updatePlaceholder();
+  redraw();
 }
+
 function hexToRgb(hex){
   const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
 }
 
 // silhouette
-function setSilhouette(src){silhouette=new Image(); silhouette.onload=redraw; silhouette.src=src;}
+function setSilhouette(src){silhouette=new Image(); silhouette.onload=()=>{bctx.drawImage(silhouette,0,0,buffer.width,buffer.height); redraw();}; silhouette.src=src;}
 function removeSilhouette(){silhouette=null; redraw();}
 function uploadSilhouette(e){
   let f=e.target.files[0]; if(!f) return;
@@ -385,31 +346,20 @@ function uploadSilhouette(e){
   r.readAsDataURL(f);
 }
 
-// redraw
 function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
+
 function redraw(){
-  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  applyTransform();
-  if(silhouette){
-    const ratio=Math.min(canvas.width/silhouette.width,canvas.height/silhouette.height)*0.8;
-    let w=silhouette.width*ratio, h=silhouette.height*ratio;
-    ctx.drawImage(silhouette,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
-  }
+  ctx.save();
+  ctx.translate(offsetX,offsetY);
+  ctx.scale(scale,scale);
+  ctx.drawImage(buffer,0,0);
+  ctx.restore();
   updatePlaceholder();
 }
-function clearDrawing(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  hasDrawn=false;
-  redraw();
-}
-function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
 
-// zoom/pan
-function zoomIn(){ scale*=1.2; redraw(); }
-function zoomOut(){ scale/=1.2; redraw(); }
-function applyTransform(){ ctx.setTransform(scale,0,0,scale,offsetX,offsetY); }
-function getTransformedPoint(x,y){ const inv=1/scale; return {x:(x-offsetX)*inv,y:(y-offsetY)*inv}; }
+function clearDrawing(){bctx.clearRect(0,0,buffer.width,buffer.height); hasDrawn=false; redraw();}
+function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
 </script>
 </body>
 </html>
