@@ -31,11 +31,15 @@
       justify-content: center;
       align-items: center;
       position: relative;
+      overflow: hidden;
     }
     canvas {
       border: 1px solid #ccc;
       background: white;
       display: block;
+      transform-origin: center center;
+      transition: transform 0.1s linear;
+      cursor: crosshair;
     }
     button, label {
       background:var(--btn);
@@ -60,9 +64,7 @@
     input[type="file"] { display:none; }
 
     /* Dropdown menus */
-    .dropdown {
-      position: relative;
-    }
+    .dropdown { position: relative; }
     .dropdown-content {
       display: none;
       position: absolute;
@@ -90,43 +92,25 @@
     }
     .dropdown.show .dropdown-content { display:block; }
 
-    .tool-item {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:8px 12px;
-    }
+    .tool-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; }
     .tool-item label { font-size:13px; color:#333; }
-    .tool-item input[type="color"], 
-    .tool-item select {
-      margin-left:10px;
-    }
+    .tool-item input[type="color"], .tool-item select { margin-left:10px; }
 
-    .active-option {
-      border:2px solid var(--btn-hover) !important;
-      border-radius:6px;
-    }
+    .active-option { border:2px solid var(--btn-hover) !important; border-radius:6px; }
 
     #patternPreview {
-      width:30px;
-      height:30px;
-      border:1px solid #ccc;
-      border-radius:4px;
+      width:30px; height:30px;
+      border:1px solid #ccc; border-radius:4px;
       margin-left:8px;
-      background-size:cover;
-      background-position:center;
+      background-size:cover; background-position:center;
       cursor: pointer;
     }
-
     #placeholder {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      color: #888;
-      font-size: 18px;
-      text-align: center;
-      pointer-events: none;
+      color: #888; font-size: 18px;
+      text-align: center; pointer-events: none;
     }
   </style>
 </head>
@@ -200,6 +184,8 @@
   <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
   <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
   <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <button onclick="zoomIn()">➕ Zoom</button>
+  <button onclick="zoomOut()">➖ Dézoom</button>
 </footer>
 
 <script>
@@ -210,6 +196,8 @@ let silhouette=null, hasDrawn=false;
 let currentColor="#000000", currentSize=2;
 let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
+let zoomLevel=1, panX=0, panY=0;
+let isPanning=false, lastPan={x:0,y:0};
 const placeholder=document.getElementById("placeholder");
 
 function resizeCanvas(){
@@ -229,17 +217,48 @@ function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.cl
 
 // dessin
 canvas.addEventListener("mousedown",e=>{
-  closeDropdowns(); // ✅ ferme menus quand on dessine/remplit
-  if(fillMode){ floodFill(e.offsetX,e.offsetY); saveState(); return; }
-  drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX,e.offsetY);
+  closeDropdowns();
+  if(e.button===0){
+    if(fillMode){ floodFill((e.offsetX-panX)/zoomLevel,(e.offsetY-panY)/zoomLevel); saveState(); return; }
+    if(!isPanning){
+      drawing=true;
+      ctx.beginPath();
+      ctx.moveTo((e.offsetX-panX)/zoomLevel,(e.offsetY-panY)/zoomLevel);
+    }
+  }
 });
-canvas.addEventListener("mouseup",()=>{drawing=false; saveState();});
+canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState();});
 canvas.addEventListener("mousemove",e=>{
-  if(!drawing||fillMode) return;
-  hasDrawn=true; updatePlaceholder();
-  ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
-  ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke();
+  if(drawing && !fillMode){
+    hasDrawn=true; updatePlaceholder();
+    ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
+    ctx.lineTo((e.offsetX-panX)/zoomLevel,(e.offsetY-panY)/zoomLevel); ctx.stroke();
+  }
+  if(isPanning){
+    panX+=e.offsetX-lastPan.x; panY+=e.offsetY-lastPan.y;
+    lastPan={x:e.offsetX,y:e.offsetY};
+    updateTransform();
+  }
 });
+
+// Pan avec barre espace
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space"){ canvas.style.cursor="grab"; }
+});
+window.addEventListener("keyup",e=>{
+  if(e.code==="Space"){ canvas.style.cursor=fillMode?"url('icons/brush-cursor.svg') 0 16, auto":"url('icons/cray-cursor.svg') 0 16, auto"; }
+});
+canvas.addEventListener("mousedown",e=>{
+  if(e.button===0 && e.ctrlKey===false && e.shiftKey===false && e.altKey===false && e.metaKey===false && e.getModifierState("Space")){
+    isPanning=true;
+    lastPan={x:e.offsetX,y:e.offsetY};
+    canvas.style.cursor="grabbing";
+  }
+});
+
+function updateTransform(){
+  canvas.style.transform=`translate(${panX}px,${panY}px) scale(${zoomLevel})`;
+}
 
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
@@ -291,7 +310,6 @@ function setFillModePattern(){
   document.getElementById("patternModeBtn").classList.add("active-option");
   document.getElementById("colorModeBtn").classList.remove("active-option");
 }
-
 function loadFillPattern(e){
   let f=e.target.files[0]; if(!f) return;
   let r=new FileReader();
@@ -326,7 +344,6 @@ function floodFill(x,y){
     if(visited.has(key)) continue;
     if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
     visited.add(key);
-
     if(usePattern && fillPattern){
       const px=(cx%patternSize), py=(cy%patternSize);
       const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
@@ -335,7 +352,6 @@ function floodFill(x,y){
       const rgb=hexToRgb(fillColor);
       pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
     }
-
     stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
   }
   ctx.putImageData(imageData,0,0);
@@ -366,12 +382,12 @@ function redraw(){
   }
   updatePlaceholder();
 }
-function clearDrawing(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  hasDrawn=false;
-  redraw();
-}
-function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
+function clearDrawing(){ ctx.clearRect(0,0,canvas.width,canvas.height); hasDrawn=false; redraw(); }
+function download(){ let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click(); }
+
+// Zoom
+function zoomIn(){ zoomLevel=Math.min(zoomLevel+0.2,3); updateTransform(); }
+function zoomOut(){ zoomLevel=Math.max(zoomLevel-0.2,0.4); updateTransform(); }
 </script>
 </body>
 </html>
