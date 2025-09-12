@@ -24,14 +24,18 @@
       background: #fafafa;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       flex-wrap: wrap;
-      z-index: 10;
+    }
+    .canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
     }
     canvas {
-      flex: 1;
       border: 1px solid #ccc;
       background: white;
       display: block;
-      cursor: crosshair;
     }
     button, label {
       background:var(--btn);
@@ -55,7 +59,10 @@
     }
     input[type="file"] { display:none; }
 
-    .dropdown { position: relative; }
+    /* Dropdown menus */
+    .dropdown {
+      position: relative;
+    }
     .dropdown-content {
       display: none;
       position: absolute;
@@ -96,9 +103,19 @@
     }
 
     .active-option {
-      border:2px solid var(--btn-hover);
+      border:2px solid var(--btn-hover) !important;
       border-radius:6px;
-      padding:2px;
+    }
+
+    #patternPreview {
+      width:30px;
+      height:30px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      margin-left:8px;
+      background-size:cover;
+      background-position:center;
+      cursor: pointer;
     }
 
     #placeholder {
@@ -149,13 +166,13 @@
     <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
-        <button id="fillColorBtn" onclick="setFillModeColor(); closeDropdowns()">Couleur</button>
+        <button id="colorModeBtn" onclick="setFillModeColor()">Couleur</button>
         <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
       </div>
       <div class="tool-item">
-        <button id="fillPatternBtn" onclick="setFillModePattern(); closeDropdowns()">Motif</button>
+        <button id="patternModeBtn" onclick="setFillModePattern()">Motif</button>
+        <div id="patternPreview" onclick="document.getElementById('patternInput').click()"></div>
         <input type="file" id="patternInput" accept="image/*" onchange="loadFillPattern(event)">
-        <canvas id="patternPreview" width="24" height="24" style="border:1px solid #ccc;"></canvas>
       </div>
       <div class="tool-item">
         <label>Taille motif</label>
@@ -168,23 +185,24 @@
     </div>
   </div>
 
-  <button id="draw-btn" onclick="setDrawMode()">✏️ Mode dessin</button>
-  <button id="fill-btn" onclick="setFillMode()">🪣 Mode remplissage</button>
+  <!-- Boutons mode -->
+  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
+  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
 </header>
 
-<div style="position:relative; flex:1; display:flex; justify-content:center; align-items:center;">
+<div class="canvas-container">
   <canvas id="board"></canvas>
   <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
 </div>
 
 <footer>
-  <button onclick="undo()">↩️ Annuler</button>
-  <button onclick="redo()">↪️ Rétablir</button>
-  <button onclick="clearDrawing()">🧹 Effacer</button>
-  <button onclick="download()">⬇️ Télécharger</button>
-  <button onclick="zoomIn()">🔍 +</button>
-  <button onclick="zoomOut()">🔍 -</button>
-  <button onclick="setPanMode()">✋ Pan</button>
+  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
+  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
+  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
+  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
+  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
+  <button onclick="setPanMode()"><img src="icons/move.svg"> Se déplacer</button>
 </footer>
 
 <script>
@@ -193,7 +211,7 @@ const ctx=canvas.getContext("2d");
 let drawing=false, fillMode=false, panMode=false;
 let silhouette=null, hasDrawn=false;
 let currentColor="#000000", currentSize=2;
-let fillPattern=null, patternSize=50, fillModeType="color", fillColor="#ff0000";
+let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
 const placeholder=document.getElementById("placeholder");
 
@@ -201,10 +219,9 @@ const placeholder=document.getElementById("placeholder");
 let scale=1, offsetX=0, offsetY=0;
 let isPanning=false, panStart={x:0,y:0};
 
-// resize
 function resizeCanvas(){
   canvas.width=window.innerWidth*0.8;
-  canvas.height=window.innerHeight*0.7;
+  canvas.height=window.innerHeight*0.6;
   redraw();
 }
 window.addEventListener("resize",resizeCanvas);
@@ -219,23 +236,17 @@ function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.cl
 
 // dessin
 canvas.addEventListener("mousedown",e=>{
+  closeDropdowns();
   const pos=getTransformedPoint(e.offsetX,e.offsetY);
 
-  if(panMode){ // mode déplacement
+  if(panMode){
     isPanning=true;
     panStart={x:e.offsetX,y:e.offsetY};
     return;
   }
 
-  if(fillMode){
-    floodFill(pos.x,pos.y);
-    saveState();
-    closeDropdowns();
-    return;
-  }
-  drawing=true;
-  ctx.beginPath();
-  ctx.moveTo(pos.x,pos.y);
+  if(fillMode){ floodFill(pos.x,pos.y); saveState(); return; }
+  drawing=true; ctx.beginPath(); ctx.moveTo(pos.x,pos.y);
 });
 canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState();});
 canvas.addEventListener("mousemove",e=>{
@@ -252,33 +263,31 @@ canvas.addEventListener("mousemove",e=>{
   ctx.lineTo(pos.x,pos.y); ctx.stroke();
 });
 
-// tactile pan
-let touchStart=null;
-canvas.addEventListener("touchstart",e=>{
-  if(e.touches.length===1){
-    touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
-  }
-});
-canvas.addEventListener("touchmove",e=>{
-  if(panMode && touchStart && e.touches.length===1){
-    const dx=e.touches[0].clientX-touchStart.x;
-    const dy=e.touches[0].clientY-touchStart.y;
-    offsetX+=dx;
-    offsetY+=dy;
-    touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
-    redraw();
-  }
-});
-canvas.addEventListener("touchend",()=>{touchStart=null;});
-
 // outils
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
-function setDrawMode(){fillMode=false; panMode=false;}
-function setFillMode(){fillMode=true; panMode=false;}
-function setPanMode(){panMode=true; fillMode=false; drawing=false;}
+function setFillColor(c){fillColor=c;}
 
-// undo/redo
+function setDrawMode(){
+  fillMode=false; panMode=false;
+  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
+  document.getElementById("fill-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
+}
+function setFillMode(){
+  fillMode=true; panMode=false;
+  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
+  document.getElementById("draw-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
+}
+function setPanMode(){
+  panMode=true; fillMode=false; drawing=false;
+  document.getElementById("fill-btn").style.background= "var(--btn)";
+  document.getElementById("draw-btn").style.background= "var(--btn)";
+  canvas.style.cursor="grab";
+}
+
+// Undo/Redo
 function saveState(){
   undoStack.push(canvas.toDataURL());
   redoStack=[];
@@ -300,10 +309,18 @@ function redo(){
   img.src=last;
 }
 
-// fill
-function setFillColor(c){ fillColor=c; }
-function setFillModeColor(){ fillModeType="color"; }
-function setFillModePattern(){ fillModeType="pattern"; }
+// Remplissage
+function setFillModeColor(){
+  usePattern=false;
+  document.getElementById("colorModeBtn").classList.add("active-option");
+  document.getElementById("patternModeBtn").classList.remove("active-option");
+}
+function setFillModePattern(){
+  usePattern=true;
+  document.getElementById("patternModeBtn").classList.add("active-option");
+  document.getElementById("colorModeBtn").classList.remove("active-option");
+}
+
 function loadFillPattern(e){
   let f=e.target.files[0]; if(!f) return;
   let r=new FileReader();
@@ -314,10 +331,8 @@ function loadFillPattern(e){
       pc.width=patternSize; pc.height=patternSize;
       pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
       fillPattern=pc;
-      let prev=document.getElementById("patternPreview");
-      let pctx=prev.getContext("2d");
-      pctx.clearRect(0,0,24,24);
-      pctx.drawImage(pc,0,0,24,24);
+      document.getElementById("patternPreview").style.backgroundImage=`url(${ev.target.result})`;
+      setFillModePattern();
     };
     img.src=ev.target.result;
   };
@@ -341,7 +356,7 @@ function floodFill(x,y){
     if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
     visited.add(key);
 
-    if(fillModeType==="pattern" && fillPattern){
+    if(usePattern && fillPattern){
       const px=(cx%patternSize), py=(cy%patternSize);
       const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
       pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
@@ -354,6 +369,10 @@ function floodFill(x,y){
   }
   ctx.putImageData(imageData,0,0);
   hasDrawn=true; updatePlaceholder();
+}
+function hexToRgb(hex){
+  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
 }
 
 // silhouette
@@ -379,20 +398,18 @@ function redraw(){
   }
   updatePlaceholder();
 }
-function clearDrawing(){ctx.clearRect(0,0,canvas.width,canvas.height); hasDrawn=false; redraw();}
+function clearDrawing(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  hasDrawn=false;
+  redraw();
+}
 function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
 
-// zoom boutons
+// zoom/pan
 function zoomIn(){ scale*=1.2; redraw(); }
 function zoomOut(){ scale/=1.2; redraw(); }
-
 function applyTransform(){ ctx.setTransform(scale,0,0,scale,offsetX,offsetY); }
-function getTransformedPoint(x,y){ const invScale=1/scale; return {x:(x-offsetX)*invScale, y:(y-offsetY)*invScale}; }
-
-function hexToRgb(hex){
-  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
-}
+function getTransformedPoint(x,y){ const inv=1/scale; return {x:(x-offsetX)*inv,y:(y-offsetY)*inv}; }
 </script>
 </body>
 </html>
