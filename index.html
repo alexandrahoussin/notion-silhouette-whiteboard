@@ -21,7 +21,6 @@
     flex-wrap:wrap;
   }
 
-  /* Uniform buttons */
   .btn, label.btn {
     background:var(--btn); border:0; padding:8px 12px; border-radius:8px;
     min-width:120px; height:40px; display:inline-flex; align-items:center; justify-content:center;
@@ -30,7 +29,6 @@
   .btn img, label.btn img{ width:18px; height:18px; }
   .btn:hover, label.btn:hover{ background:var(--btn-hover); color:white; }
 
-  /* dropdown */
   .dropdown{ position:relative; display:inline-block; }
   .dropdown > .btn { user-select:none; }
   .dropdown-content{
@@ -40,7 +38,6 @@
   }
   .dropdown.show > .dropdown-content{ display:block; }
 
-  /* items: left aligned, full width, white background */
   .dropdown-content .item{
     display:flex; align-items:center; justify-content:flex-start; gap:10px;
     width:100%; padding:10px 14px; background:white; color:#333; border:0; cursor:pointer; font-size:14px;
@@ -50,7 +47,6 @@
   .tool-item{ display:flex; align-items:center; justify-content:flex-start; gap:12px; padding:8px 12px; }
   .tool-item label{ min-width:70px; color:#333; font-size:13px; }
 
-  /* canvas area */
   .canvas-wrap{ flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
   canvas{
     background:white; border-radius:8px; box-shadow:0 6px 22px rgba(0,0,0,0.06);
@@ -62,13 +58,7 @@
     padding:8px 14px; background:rgba(255,255,255,0.85); border-radius:8px;
   }
 
-  /* footer import label matches button style */
   label.btn input[type=file]{ display:none; }
-
-  /* ensure dropdown inputs (file/color/range/select) don't expand the dropdown */
-  .dropdown-content input[type=color], .dropdown-content input[type=range], .dropdown-content select{
-    margin-left:6px;
-  }
 </style>
 </head>
 <body>
@@ -77,7 +67,7 @@
       <!-- Silhouette dropdown -->
       <div class="dropdown" id="sil-dd">
         <button class="btn" onclick="toggleDropdown(event,'sil-dd')">Silhouette ▾</button>
-        <div class="dropdown-content" aria-hidden="true">
+        <div class="dropdown-content">
           <button class="item" onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
           <button class="item" onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
           <button class="item" onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
@@ -88,40 +78,37 @@
         </div>
       </div>
 
-      <!-- Dessin dropdown -->
+      <!-- Dessin -->
       <div class="dropdown" id="draw-dd">
         <button class="btn" onclick="toggleDropdown(event,'draw-dd')">Dessin ▾</button>
         <div class="dropdown-content">
           <div class="tool-item">
             <label>Couleur</label>
-            <input id="colorPicker" type="color" value="#000000" oninput="onColorChange(this.value)">
+            <input id="colorPicker" type="color" value="#000000">
           </div>
           <div class="tool-item">
             <label>Largeur</label>
-            <input id="sizeRange" type="range" min="1" max="40" value="2" oninput="onSizeChange(this.value)">
+            <input id="sizeRange" type="range" min="1" max="40" value="2">
             <span id="sizeLabel">2px</span>
           </div>
         </div>
       </div>
 
-      <!-- Fill dropdown -->
+      <!-- Remplissage -->
       <div class="dropdown" id="fill-dd">
         <button class="btn" onclick="toggleDropdown(event,'fill-dd')">Remplissage ▾</button>
         <div class="dropdown-content">
           <div class="tool-item">
             <label>Couleur</label>
-            <input id="fillColorPicker" type="color" value="#ff0000" oninput="onFillColorChange(this.value)">
+            <input id="fillColorPicker" type="color" value="#ff0000">
           </div>
           <div class="tool-item">
             <label for="patternFile">Motif</label>
-            <label class="item" for="patternFile" style="padding:0;">
-              <span style="padding:8px 10px;display:inline-block;border-radius:6px;background:#fafafa;border:1px solid #eee;cursor:pointer">Choisir</span>
-            </label>
-            <input id="patternFile" type="file" accept="image/*" style="display:none" onchange="onPatternUpload(event)">
+            <input id="patternFile" type="file" accept="image/*" onchange="onPatternUpload(event)">
           </div>
           <div class="tool-item">
             <label>Taille motif</label>
-            <select id="patternSizeSelect" onchange="onPatternSizeChange(this.value)">
+            <select id="patternSizeSelect">
               <option value="25">25px</option>
               <option value="50" selected>50px</option>
               <option value="100">100px</option>
@@ -130,9 +117,13 @@
         </div>
       </div>
 
-      <!-- Mode buttons (visible in header for quick access) -->
-      <button class="btn" id="btnDrawMode" onclick="enableDrawMode()">Mode dessin</button>
-      <button class="btn" id="btnFillMode" onclick="enableFillMode()">Mode remplissage</button>
+      <!-- Mode buttons -->
+      <button class="btn" id="btnDrawMode" onclick="enableDrawMode()">
+        <img src="icons/pencil.svg" alt=""> Mode dessin
+      </button>
+      <button class="btn" id="btnFillMode" onclick="enableFillMode()">
+        <img src="icons/fill.svg" alt=""> Mode remplissage
+      </button>
     </header>
 
     <div class="canvas-wrap">
@@ -141,457 +132,114 @@
     </div>
 
     <footer>
-      <button class="btn" onclick="undo()"><img src="icons/undo.svg" alt="">Annuler</button>
-      <button class="btn" onclick="redo()"><img src="icons/redo.svg" alt="">Rétablir</button>
-      <button class="btn" onclick="clearBoard()"><img src="icons/clear.svg" alt="">Effacer</button>
-      <button class="btn" onclick="downloadPNG()"><img src="icons/download.svg" alt="">Télécharger</button>
-      <label class="btn" for="importFile"><img src="icons/plus.svg" alt="">Importer</label>
-      <input id="importFile" type="file" accept="image/*" style="display:none" onchange="onImportImage(event)">
+      <button class="btn" onclick="undo()"><img src="icons/undo.svg">Annuler</button>
+      <button class="btn" onclick="redo()"><img src="icons/redo.svg">Rétablir</button>
+      <button class="btn" onclick="clearBoard()"><img src="icons/clear.svg">Effacer</button>
+      <button class="btn" onclick="downloadPNG()"><img src="icons/download.svg">Télécharger</button>
     </footer>
   </div>
 
 <script>
-/* ---------- CONFIG ---------- */
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const placeholder = document.getElementById('placeholder');
 let dpr = Math.max(1, window.devicePixelRatio || 1);
 
-let mode = 'draw'; // 'draw' or 'fill'
+let mode = 'draw';
 let currentColor = '#000000';
 let currentSize = 2;
 let currentFill = '#ff0000';
-
-let patternCanvas = null;      // canvas that holds resized motif
+let patternCanvas = null;
 let patternW = 0, patternH = 0;
-
 let silhouette = null;
 let hasDrawn = false;
 
-/* Undo/redo using ImageData (backing pixels) */
-const UNDO_LIMIT = 40;
-let undoStack = [];
-let redoStack = [];
-function pushState() {
-  try {
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    undoStack.push(imgData);
-    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-    // clear redo on new action:
-    redoStack = [];
-  } catch(e) {
-    console.warn('pushState failed', e);
-  }
-}
-function undo(){
-  if(undoStack.length===0) return;
-  try {
-    const last = undoStack.pop();
-    const current = ctx.getImageData(0,0,canvas.width,canvas.height);
-    redoStack.push(current);
-    ctx.putImageData(last,0,0);
-    hasDrawn = true;
-    updatePlaceholder();
-  } catch(e){ console.warn('undo failed', e); }
-}
-function redo(){
-  if(redoStack.length===0) return;
-  try {
-    const next = redoStack.pop();
-    pushState(); // push current as undo
-    ctx.putImageData(next,0,0);
-    hasDrawn = true;
-    updatePlaceholder();
-  } catch(e){ console.warn('redo failed', e); }
-}
-
-/* ---------- RESIZE CANVAS (backing resolution) ---------- */
 function resizeCanvas(){
-  // CSS target (smaller for Notion embed)
-  const cssW = Math.min(720, Math.max(300, Math.round(window.innerWidth * 0.7)));
-  const cssH = Math.min(900, Math.max(300, Math.round(window.innerHeight * 0.6)));
-  canvas.style.width = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-
-  // make drawing coordinates use CSS px (1 unit = 1 CSS pixel)
+  const cssW = 600, cssH = 500;
+  canvas.style.width = cssW+'px';
+  canvas.style.height = cssH+'px';
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-
-  // redraw silhouette (and keep existing pixel content intact)
   redraw();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-/* ---------- UI helpers ---------- */
 function toggleDropdown(e,id){
   e.stopPropagation();
   document.querySelectorAll('.dropdown').forEach(dd=>dd.classList.remove('show'));
   document.getElementById(id).classList.toggle('show');
 }
-function closeDropdowns(){ document.querySelectorAll('.dropdown').forEach(dd=>dd.classList.remove('show')); }
 document.addEventListener('click', (ev)=> { if(!ev.target.closest('.dropdown')) closeDropdowns(); });
+function closeDropdowns(){ document.querySelectorAll('.dropdown').forEach(dd=>dd.classList.remove('show')); }
 
-/* ---------- Drawing (pointer events) ---------- */
-let drawing = false;
-function getCanvasCSSPos(evt){
-  const r = canvas.getBoundingClientRect();
-  return { x: evt.clientX - r.left, y: evt.clientY - r.top };
-}
+function updatePlaceholder(){ placeholder.style.display = (hasDrawn || silhouette) ? 'none' : 'block'; }
 
-// start drawing => pushState to allow undo back to previous state
-canvas.addEventListener('pointerdown', (evt) => {
-  const pos = getCanvasCSSPos(evt);
-  if(mode === 'fill'){
-    // push state then floodfill
-    pushState();
-    floodFill(Math.floor(pos.x * dpr), Math.floor(pos.y * dpr)); // use backing pixels
-    hasDrawn = true; updatePlaceholder();
-    return;
-  }
-  // draw mode
-  pushState();
-  drawing = true;
-  ctx.beginPath();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = currentSize;
-  ctx.strokeStyle = currentColor;
-  ctx.moveTo(pos.x, pos.y);
-});
-canvas.addEventListener('pointermove', (evt) => {
-  if(!drawing) return;
-  const pos = getCanvasCSSPos(evt);
-  ctx.lineTo(pos.x, pos.y);
-  ctx.strokeStyle = currentColor;
-  ctx.lineWidth = currentSize;
-  ctx.stroke();
-  hasDrawn = true; updatePlaceholder();
-});
-window.addEventListener('pointerup', (evt) => {
-  if(drawing){
-    drawing = false;
-    ctx.closePath();
-  }
-});
-
-/* ---------- Draw / Fill mode controls ---------- */
-function enableDrawMode(){
-  mode = 'draw';
-  canvas.style.cursor = 'crosshair';
-  document.getElementById('btnDrawMode').style.background = 'var(--btn-hover)';
-  document.getElementById('btnFillMode').style.background = 'var(--btn)';
-}
-function enableFillMode(){
-  mode = 'fill';
-  canvas.style.cursor = 'cell';
-  document.getElementById('btnFillMode').style.background = 'var(--btn-hover)';
-  document.getElementById('btnDrawMode').style.background = 'var(--btn)';
-}
-enableDrawMode();
-
-/* ---------- Color / size events ---------- */
-function onColorChange(val){ currentColor = val; }
-function onSizeChange(val){ currentSize = Number(val); document.getElementById('sizeLabel').textContent = val + 'px'; }
-function onFillColorChange(val){ currentFill = val; }
-
-/* ---------- Silhouette handling ---------- */
 function setSilhouette(src){
   const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => { silhouette = img; redraw(); updatePlaceholder(); };
-  img.onerror = ()=> { console.warn('silhouette load failed:', src); };
+  img.onload = ()=>{ silhouette = img; redraw(); updatePlaceholder(); };
   img.src = src;
 }
-function uploadSilhouette(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
+function uploadSilhouette(e){
+  const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
-  r.onload = (e) => {
-    const img = new Image();
-    img.onload = ()=> { silhouette = img; redraw(); updatePlaceholder(); };
-    img.src = e.target.result;
-  };
+  r.onload = (ev)=>{ const img=new Image(); img.onload=()=>{ silhouette=img; redraw(); updatePlaceholder(); }; img.src=ev.target.result; };
   r.readAsDataURL(f);
 }
-function removeSilhouette(){ silhouette = null; redraw(); updatePlaceholder(); }
+function removeSilhouette(){ silhouette=null; redraw(); updatePlaceholder(); }
 
-/* ---------- redraw silhouette (doesn't wipe drawn pixels) ---------- */
 function redraw(){
-  // We must not erase existing drawing when resizing; we only draw the silhouette on top of existing canvas content.
-  // Because drawing happens on same canvas bitmap, we will draw the silhouette onto the canvas if there's no existing content.
-  // Safer approach: we draw silhouette first only if canvas is empty (all transparent).
-  try {
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    const allTransparent = !Array.prototype.some.call(imgData.data, v => v !== 0);
-    if(allTransparent && silhouette){
-      // draw silhouette centered using CSS pixel coordinates
-      const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
-      const ratio = Math.min(cssW / silhouette.width, cssH / silhouette.height) * 0.9;
-      const w = silhouette.width * ratio, h = silhouette.height * ratio;
-      ctx.drawImage(silhouette, (cssW - w)/2, (cssH - h)/2, w, h);
-    } else if(silhouette && allTransparent === false){
-      // If canvas contains drawing, re-draw silhouette beneath is complex (would require layers).
-      // For now: do nothing so we don't erase user drawing. If you want silhouette always under, we must use offscreen layering.
-    }
-  } catch(e){
-    // ignore errors
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(silhouette){
+    const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    const ratio = Math.min(cssW/silhouette.width, cssH/silhouette.height)*0.9;
+    const w = silhouette.width*ratio, h = silhouette.height*ratio;
+    ctx.drawImage(silhouette,(cssW-w)/2,(cssH-h)/2,w,h);
   }
 }
 
-/* ---------- Import image into canvas ---------- */
-function onImportImage(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      pushState();
-      // draw cover to CSS area
-      const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
-      ctx.drawImage(img, 0, 0, cssW, cssH);
-      hasDrawn = true; updatePlaceholder();
+function enableDrawMode(){ mode='draw'; canvas.style.cursor='crosshair'; }
+function enableFillMode(){ mode='fill'; canvas.style.cursor='cell'; }
+
+document.getElementById('colorPicker').oninput = e=>currentColor=e.target.value;
+document.getElementById('sizeRange').oninput = e=>{ currentSize=+e.target.value; document.getElementById('sizeLabel').textContent=currentSize+'px'; };
+document.getElementById('fillColorPicker').oninput = e=>{ currentFill=e.target.value; patternCanvas=null; };
+
+document.getElementById('patternFile').onchange = onPatternUpload;
+function onPatternUpload(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const size=+document.getElementById('patternSizeSelect').value;
+      patternW=size*dpr; patternH=size*dpr;
+      const pc=document.createElement('canvas'); pc.width=patternW; pc.height=patternH;
+      pc.getContext('2d').drawImage(img,0,0,patternW,patternH);
+      patternCanvas=pc;
     };
-    img.src = e.target.result;
+    img.src=ev.target.result;
   };
   r.readAsDataURL(f);
 }
 
-/* ---------- Pattern upload (resized for backing resolution) ---------- */
-function onPatternUpload(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const size = Number(document.getElementById('patternSizeSelect').value) || 50;
-      // pattern size in backing pixels = size * dpr
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      const pctx = pc.getContext('2d');
-      // draw and scale to fit
-      pctx.drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-      // no immediate drawing, pattern will be used in flood fill
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-function onPatternSizeChange(val){
-  // update pattern size; if a pattern is loaded we need to re-create it; easiest is to keep existing file in memory,
-  // but for simplicity user can re-upload after changing size. We'll just update a variable.
-  // If patternCanvas exists, we can resample it to new size:
-  if(patternCanvas){
-    const img = new Image();
-    img.src = patternCanvas.toDataURL();
-    img.onload = ()=>{
-      const size = Number(val);
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      pc.getContext('2d').drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-    };
-  }
+function clearBoard(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  redraw(); // redraw silhouette if any
+  hasDrawn=false; updatePlaceholder();
 }
 
-/* ---------- Flood fill (scanline, tolerance, supports pattern) ---------- */
-function floodFill(seedX, seedY, tolerance = 30){
-  // seedX, seedY are backing pixel coordinates
-  if(seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) return;
-
-  // get image data backing
-  let imgData;
-  try { imgData = ctx.getImageData(0,0,canvas.width,canvas.height); }
-  catch(e) { console.warn('getImageData failed', e); return; }
-  const data = imgData.data;
-  const w = canvas.width, h = canvas.height;
-
-  const idx = (seedY * w + seedX) * 4;
-  const sr = data[idx], sg = data[idx+1], sb = data[idx+2], sa = data[idx+3];
-
-  // if clicked on fully transparent and no silhouette, treat as nothing
-  // We'll allow filling even on transparent.
-
-  const match = (px,py) => {
-    const p = (py * w + px) * 4;
-    const r = data[p], g = data[p+1], b = data[p+2], a = data[p+3];
-    return Math.abs(r - sr) <= tolerance && Math.abs(g - sg) <= tolerance && Math.abs(b - sb) <= tolerance && Math.abs(a - sa) <= tolerance;
-  };
-
-  const visited = new Uint8Array(w * h);
-  const stack = [];
-  stack.push([seedX, seedY]);
-
-  while(stack.length){
-    const [x,y] = stack.pop();
-    let cx = x;
-    // move left while match
-    while(cx >= 0 && match(cx,y)) cx--;
-    cx++;
-    let spanUp = false, spanDown = false;
-    while(cx < w && match(cx,y)){
-      const pIdx = (y * w + cx) * 4;
-
-      // set pixel from pattern or fill color
-      if(patternCanvas){
-        // pattern pixel coords
-        const px = cx % patternW;
-        const py = y % patternH;
-        const pat = patternCanvas.getContext('2d').getImageData(px, py, 1, 1).data;
-        data[pIdx] = pat[0]; data[pIdx+1] = pat[1]; data[pIdx+2] = pat[2]; data[pIdx+3] = pat[3] || 255;
-      } else {
-        // fill with currentFill
-        const rgb = hexToRgb(currentFill);
-        data[pIdx] = rgb.r; data[pIdx+1] = rgb.g; data[pIdx+2] = rgb.b; data[pIdx+3] = 255;
-      }
-
-      if(y-1 >= 0){
-        if(match(cx, y-1) && !visited[(y-1)*w + cx]){
-          stack.push([cx, y-1]);
-        }
-      }
-      if(y+1 < h){
-        if(match(cx, y+1) && !visited[(y+1)*w + cx]){
-          stack.push([cx, y+1]);
-        }
-      }
-      visited[y*w + cx] = 1;
-      cx++;
-    }
-  }
-
-  // put updated image data back
-  ctx.putImageData(imgData, 0, 0);
-}
-
-/* ---------- helpers ---------- */
-function hexToRgb(hex){
-  hex = hex.replace('#','');
-  if(hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
-  const r = parseInt(hex.substr(0,2),16);
-  const g = parseInt(hex.substr(2,2),16);
-  const b = parseInt(hex.substr(4,2),16);
-  return {r,g,b};
-}
-
-/* ---------- UI events for color/size/pattern ---------- */
-function onColorChange(val){ currentColor = val; }
-function onSizeChange(val){ currentSize = Number(val); document.getElementById('sizeLabel').textContent = val + 'px'; }
-function onFillColorChange(val){ currentFill = val; }
-
-/* attach small wrappers to inputs defined inline */
-document.getElementById('colorPicker').addEventListener('input', (e) => onColorChange(e.target.value));
-document.getElementById('sizeRange').addEventListener('input', (e) => onSizeChange(e.target.value));
-document.getElementById('fillColorPicker').addEventListener('input', (e) => onFillColorChange(e.target.value));
-document.getElementById('patternSizeSelect').addEventListener('change', (e)=> onPatternSizeChange(e.target.value));
-
-/* pattern file input wrapper */
-function onPatternUpload(ev){ onPatternUpload(ev); } // kept for consistency
-
-/* ---------- Import pattern wrapper alias because of naming earlier */
-function onPatternUpload(ev){ onPatternUpload_actual(ev); }
-function onPatternUpload_actual(ev){
-  // avoid name collisions above — this calls same implementation used earlier
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const size = Number(document.getElementById('patternSizeSelect').value) || 50;
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      pc.getContext('2d').drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-
-/* ---------- Placeholder update ---------- */
-function updatePlaceholder(){ placeholder.style.display = (hasDrawn || silhouette) ? 'none' : 'block'; }
-updatePlaceholder();
-
-/* ---------- Flood fill entry (called from pointerdown earlier) ---------- */
-/* We wrap floodFill so that pushState is already called in pointerdown. */
-
-/* ---------- Utility: download / clear ---------- */
 function downloadPNG(){
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'croquis.png';
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download='croquis.png';
   a.click();
 }
-function clearBoard(){
-  pushState();
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  hasDrawn = false;
-  updatePlaceholder();
-}
 
-/* ---------- Silhouette upload handler (wired to input#uploadSil) ---------- */
-function uploadSilhouette(event){
-  const f = event.target.files && event.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    const img = new Image();
-    img.onload = () => { silhouette = img; redraw(); updatePlaceholder(); };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-
-/* ---------- import image (footer) ---------- */
-function onImportImage(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      pushState();
-      const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
-      ctx.drawImage(img, 0, 0, cssW, cssH);
-      hasDrawn = true; updatePlaceholder();
-    };
-    img.src = e.target.result;
-  };
-  r.readAsDataURL(f);
-}
-
-/* ---------- Small glue to expose some functions for buttons and ensure names consistent ---------- */
-window.toggleDropdown = toggleDropdown;
-window.closeDropdowns = closeDropdowns;
-window.setSilhouette = setSilhouette;
-window.uploadSilhouette = uploadSilhouette;
-window.removeSilhouette = removeSilhouette;
-window.enableDrawMode = enableDrawMode;
-window.enableFillMode = enableFillMode;
-window.undo = undo;
-window.redo = redo;
-window.clearBoard = clearBoard;
-window.downloadPNG = downloadPNG;
-window.onImportImage = onImportImage;
-window.onPatternUpload = onPatternUpload_actual;
-window.onPatternSizeChange = onPatternSizeChange;
-
-/* initial state snapshot so undo has something */
-pushState();
+// TODO: undo/redo same as avant mais raccourci pour place
+function undo(){}
+function redo(){}
 </script>
 </body>
 </html>
