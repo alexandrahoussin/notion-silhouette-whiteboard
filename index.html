@@ -96,6 +96,21 @@
       margin-left:10px;
     }
 
+    .active-option {
+      border:2px solid var(--btn-hover) !important;
+      border-radius:6px;
+    }
+
+    #patternPreview {
+      width:30px;
+      height:30px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      margin-left:8px;
+      background-size:cover;
+      background-position:center;
+    }
+
     #placeholder {
       position: absolute;
       top: 50%;
@@ -144,12 +159,13 @@
     <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
-        <label>Couleur</label>
+        <button id="colorModeBtn" onclick="setFillModeColor()">Couleur</button>
         <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
       </div>
       <div class="tool-item">
-        <label>Motif</label>
+        <button id="patternModeBtn" onclick="setFillModePattern()">Motif</button>
         <input type="file" onchange="loadFillPattern(event)">
+        <div id="patternPreview"></div>
       </div>
       <div class="tool-item">
         <label>Taille motif</label>
@@ -159,7 +175,6 @@
           <option value="100">100px</option>
         </select>
       </div>
-      <button onclick="clearPattern(); closeDropdowns()">Utiliser seulement la couleur</button>
     </div>
   </div>
 
@@ -189,7 +204,7 @@ const ctx=canvas.getContext("2d");
 let drawing=false, fillMode=false;
 let silhouette=null, hasDrawn=false;
 let currentColor="#000000", currentSize=2;
-let fillColor="#ff0000", fillPattern=null, patternSize=50;
+let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
 const placeholder=document.getElementById("placeholder");
 
@@ -223,7 +238,8 @@ canvas.addEventListener("mousemove",e=>{
 
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
-function setFillColor(c){fillColor=c; fillPattern=null;}
+function setFillColor(c){fillColor=c;}
+
 function setDrawMode(){
   fillMode=false;
   document.getElementById("draw-btn").style.background= "var(--btn-hover)";
@@ -259,7 +275,18 @@ function redo(){
   img.src=last;
 }
 
-// flood fill (pixel par pixel)
+// Remplissage
+function setFillModeColor(){
+  usePattern=false;
+  document.getElementById("colorModeBtn").classList.add("active-option");
+  document.getElementById("patternModeBtn").classList.remove("active-option");
+}
+function setFillModePattern(){
+  usePattern=true;
+  document.getElementById("patternModeBtn").classList.add("active-option");
+  document.getElementById("colorModeBtn").classList.remove("active-option");
+}
+
 function loadFillPattern(e){
   let f=e.target.files[0]; if(!f) return;
   let r=new FileReader();
@@ -270,13 +297,14 @@ function loadFillPattern(e){
       pc.width=patternSize; pc.height=patternSize;
       pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
       fillPattern=pc;
+      document.getElementById("patternPreview").style.backgroundImage=`url(${ev.target.result})`;
+      setFillModePattern();
     };
     img.src=ev.target.result;
   };
   r.readAsDataURL(f);
 }
 function setPatternSize(s){patternSize=parseInt(s);}
-function clearPattern(){fillPattern=null;}
 
 function floodFill(x,y){
   const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -294,7 +322,7 @@ function floodFill(x,y){
     if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
     visited.add(key);
 
-    if(fillPattern){
+    if(usePattern && fillPattern){
       const px=(cx%patternSize), py=(cy%patternSize);
       const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
       pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
@@ -336,7 +364,7 @@ function redraw(){
 function clearDrawing(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   hasDrawn=false;
-  redraw(); // ne touche pas la silhouette
+  redraw();
 }
 function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
 function uploadImage(e){
