@@ -1,436 +1,354 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Whiteboard Couture — stable</title>
-<style>
-  :root{
-    --btn:#E0EBDB; --btn-hover:#FE6FA8; --panel:#fff; --text:#222; --dd-w:300px;
-  }
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:#fafafa;color:var(--text);}
-  .app{display:flex;flex-direction:column;height:100vh;gap:8px;padding:10px;box-sizing:border-box;}
+  <meta charset="UTF-8">
+  <title>Whiteboard Couture</title>
+  <style>
+    :root {
+      --btn:#E0EBDB;
+      --btn-hover:#FE6FA8;
+    }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header, footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #fafafa;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      flex-wrap: wrap;
+    }
+    canvas {
+      flex: 1;
+      border: 1px solid #ccc;
+      background: white;
+      display: block;
+    }
+    button, label {
+      background:var(--btn);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      color:#666;
+      font-size:14px;
+      min-width:120px;
+      height:40px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+    button img, label img { width:18px; height:18px; }
+    button:hover, label:hover {
+      background:var(--btn-hover);
+      color:white;
+    }
+    input[type="file"] { display:none; }
 
-  header,footer{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--panel);padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.06);flex-wrap:wrap;}
-  .btn, label.btn{background:var(--btn);border:0;padding:8px 12px;border-radius:8px;min-width:120px;height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:14px;color:#444;}
-  .btn img, label.btn img{width:18px;height:18px;}
-  .btn:hover, label.btn:hover{background:var(--btn-hover);color:#fff;}
+    /* Dropdown menus */
+    .dropdown {
+      position: relative;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background: white;
+      min-width: 220px;
+      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+      border:1px solid #ddd;
+      border-radius:6px;
+      z-index:1000;
+      top:100%;
+      left:0;
+    }
+    .dropdown-content button, .dropdown-content label {
+      background: white !important;
+      color: #333 !important;
+      width: 100%;
+      border-radius:0;
+      text-align:left;
+      font-size:14px;
+      padding:10px 14px;
+    }
+    .dropdown-content button:hover, .dropdown-content label:hover {
+      background: #f1f1f1 !important;
+      color:#000 !important;
+    }
+    .dropdown.show .dropdown-content { display:block; }
 
-  .dropdown{position:relative;display:inline-block;}
-  .dropdown > .btn{user-select:none;}
-  .dropdown-content{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:3000;width:var(--dd-w);background:#fff;border:1px solid #e6e6e6;border-radius:8px;box-shadow:0 12px 28px rgba(0,0,0,.08);overflow:hidden;}
-  .dropdown.show > .dropdown-content{display:block;}
-  .dropdown-content .item{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;padding:10px 14px;background:white;color:#333;border:0;cursor:pointer;font-size:14px;text-align:left;}
-  .dropdown-content .item:hover{background:#f6f6f6;color:#000;}
-  .tool-item{display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:8px 12px;}
-  .tool-item label{min-width:70px;color:#333;font-size:13px;}
+    .tool-item {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px 12px;
+    }
+    .tool-item label { font-size:13px; color:#333; }
+    .tool-item input[type="color"], 
+    .tool-item select {
+      margin-left:10px;
+    }
 
-  .canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
-  /* two stacked canvases (silhouette below, drawing above) */
-  canvas{background:white;border-radius:8px;box-shadow:0 6px 22px rgba(0,0,0,0.06);max-width:calc(100% - 40px);max-height:calc(100% - 40px);touch-action:none;display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
-  #placeholder{position:absolute;z-index:40;pointer-events:none;text-align:center;color:#888;font-size:16px;padding:12px 18px;background:rgba(255,255,255,0.85);border-radius:8px;}
-  input[type=file]{display:none;}
-  .small{width:36px;height:36px;padding:6px;}
-  @media(max-width:600px){ .btn{min-width:90px;height:36px;font-size:13px;} .dropdown-content{width:240px;} }
-</style>
+    #placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888;
+      font-size: 18px;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <!-- Silhouette dropdown -->
-      <div class="dropdown" id="sil-dd">
-        <button class="btn" onclick="toggleDropdown(event,'sil-dd')">Silhouette ▾</button>
-        <div class="dropdown-content" onpointerdown="event.stopPropagation()">
-          <button class="item" onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
-          <button class="item" onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
-          <button class="item" onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
-          <button class="item" onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
-          <label class="item" for="uploadSil">Ajouter une image</label>
-          <input id="uploadSil" type="file" accept="image/*" onchange="uploadSilhouette(event)">
-          <button class="item" onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
-        </div>
-      </div>
 
-      <!-- Draw dropdown -->
-      <div class="dropdown" id="draw-dd">
-        <button class="btn" onclick="toggleDropdown(event,'draw-dd')">Dessin ▾</button>
-        <div class="dropdown-content" onpointerdown="event.stopPropagation()">
-          <div class="tool-item">
-            <label>Couleur</label>
-            <input id="colorPicker" type="color" value="#000000">
-          </div>
-          <div class="tool-item">
-            <label>Largeur</label>
-            <input id="sizeRange" type="range" min="1" max="40" value="2">
-            <span id="sizeLabel">2px</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Fill dropdown -->
-      <div class="dropdown" id="fill-dd">
-        <button class="btn" onclick="toggleDropdown(event,'fill-dd')">Remplissage ▾</button>
-        <div class="dropdown-content" onpointerdown="event.stopPropagation()">
-          <div class="tool-item">
-            <label>Couleur</label>
-            <input id="fillColorPicker" type="color" value="#ff0000">
-          </div>
-          <div class="tool-item">
-            <label>Motif</label>
-            <label class="item" for="patternFile" style="padding:0;">
-              <span style="padding:8px 10px;border-radius:6px;background:#fafafa;border:1px solid #eee;cursor:pointer">Choisir</span>
-            </label>
-            <input id="patternFile" type="file" accept="image/*" onchange="onPatternUpload(event)">
-          </div>
-          <div class="tool-item">
-            <label>Taille motif</label>
-            <select id="patternSizeSelect">
-              <option value="25">25px</option>
-              <option value="50" selected>50px</option>
-              <option value="100">100px</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Mode buttons with icons -->
-      <button class="btn" id="btnDrawMode" onclick="enableDrawMode()"><img src="icons/crayon.svg">Mode dessin</button>
-      <button class="btn" id="btnFillMode" onclick="enableFillMode()"><img src="icons/spray.svg">Mode remplissage</button>
-    </header>
-
-    <div class="canvas-wrap">
-      <!-- silhouette canvas under (z-index 10), drawing canvas over (z-index 20) -->
-      <canvas id="silCanvas" style="z-index:10;"></canvas>
-      <canvas id="drawCanvas" style="z-index:20;"></canvas>
-      <div id="placeholder">✏️ Ici je laisse place à mon imagination — choisis une silhouette ou commence à dessiner</div>
+<header>
+  <!-- Menu Silhouettes -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
+    <div class="dropdown-content">
+      <button onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
+      <button onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
+      <button onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
+      <button onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
+      <label><input type="file" onchange="uploadSilhouette(event)">Ajouter une image</label>
+      <button onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
     </div>
-
-    <footer>
-      <button class="btn" onclick="undo()"><img src="icons/undo.svg" alt="">Annuler</button>
-      <button class="btn" onclick="redo()"><img src="icons/redo.svg" alt="">Rétablir</button>
-      <button class="btn" onclick="clearDrawings()"><img src="icons/clear.svg" alt="">Effacer</button>
-      <button class="btn" onclick="downloadPNG()"><img src="icons/download.svg" alt="">Télécharger</button>
-      <label class="btn" for="importFile"><img src="icons/plus.svg" alt="">Importer</label>
-      <input id="importFile" type="file" accept="image/*" onchange="onImportImage(event)">
-    </footer>
   </div>
 
+  <!-- Menu Dessin -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Dessin ▼</button>
+    <div class="dropdown-content">
+      <div class="tool-item">
+        <label>Couleur</label>
+        <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
+      </div>
+      <div class="tool-item">
+        <label>Largeur</label>
+        <input type="range" min="1" max="20" value="2" onchange="setSize(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Remplissage -->
+  <div class="dropdown">
+    <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
+    <div class="dropdown-content">
+      <div class="tool-item">
+        <label>Couleur</label>
+        <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
+      </div>
+      <div class="tool-item">
+        <label>Motif</label>
+        <input type="file" onchange="loadFillPattern(event)">
+      </div>
+      <div class="tool-item">
+        <label>Taille motif</label>
+        <select id="patternSize" onchange="setPatternSize(this.value)">
+          <option value="25">25px</option>
+          <option value="50" selected>50px</option>
+          <option value="100">100px</option>
+        </select>
+      </div>
+      <button onclick="clearPattern(); closeDropdowns()">Utiliser seulement la couleur</button>
+    </div>
+  </div>
+
+  <!-- Boutons mode -->
+  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
+  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
+</header>
+
+<div style="position:relative; flex:1;">
+  <canvas id="board"></canvas>
+  <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
+</div>
+
+<footer>
+  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
+  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
+  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
+  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <label><img src="icons/plus.svg"> Importer
+    <input type="file" accept="image/*" onchange="uploadImage(event)">
+  </label>
+</footer>
+
 <script>
-/* ---------- elements & contexts ---------- */
-const silCanvas = document.getElementById('silCanvas');
-const drawCanvas = document.getElementById('drawCanvas');
-const silCtx = silCanvas.getContext('2d');
-const drawCtx = drawCanvas.getContext('2d');
-const placeholder = document.getElementById('placeholder');
+const canvas=document.getElementById("board");
+const ctx=canvas.getContext("2d");
+let drawing=false, fillMode=false;
+let silhouette=null, hasDrawn=false;
+let currentColor="#000000", currentSize=2;
+let fillColor="#ff0000", fillPattern=null, patternSize=50;
+let undoStack=[], redoStack=[];
+const placeholder=document.getElementById("placeholder");
 
-let dpr = Math.max(1, window.devicePixelRatio || 1);
+function resizeCanvas(){
+  canvas.width=window.innerWidth*0.8;
+  canvas.height=window.innerHeight*0.6;
+  redraw();
+}
+window.addEventListener("resize",resizeCanvas);
+resizeCanvas();
 
-/* state */
-let mode = 'draw';
-let currentColor = '#000000';
-let currentSize = 2;
-let currentFill = '#ff0000';
-let patternCanvas = null, patternW = 0, patternH = 0;
-let silhouetteImg = null;
-let hasDrawn = false;
+function toggleDropdown(b){
+  const dd=b.parentElement;
+  document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));
+  dd.classList.toggle("show");
+}
+function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));}
 
-/* undo/redo for draw layer */
-const UNDO_LIMIT = 40;
-let undoStack = [], redoStack = [];
-function pushState(){
-  try{
-    const imgData = drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height);
-    undoStack.push(imgData);
-    if(undoStack.length > UNDO_LIMIT) undoStack.shift();
-    redoStack = [];
-  }catch(e){ console.warn('pushState failed', e); }
+// dessin
+canvas.addEventListener("mousedown",e=>{
+  if(fillMode){ floodFill(e.offsetX,e.offsetY); saveState(); return; }
+  drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX,e.offsetY);
+});
+canvas.addEventListener("mouseup",()=>{drawing=false; saveState();});
+canvas.addEventListener("mousemove",e=>{
+  if(!drawing||fillMode) return;
+  hasDrawn=true; updatePlaceholder();
+  ctx.lineWidth=currentSize; ctx.lineCap="round"; ctx.strokeStyle=currentColor;
+  ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke();
+});
+
+function setColor(c){currentColor=c;}
+function setSize(s){currentSize=s;}
+function setFillColor(c){fillColor=c; fillPattern=null;}
+function setDrawMode(){
+  fillMode=false;
+  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
+  document.getElementById("fill-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
+}
+function setFillMode(){
+  fillMode=true;
+  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
+  document.getElementById("draw-btn").style.background= "var(--btn)";
+  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
+}
+
+// Undo/Redo
+function saveState(){
+  undoStack.push(canvas.toDataURL());
+  redoStack=[];
 }
 function undo(){
-  if(!undoStack.length) return;
-  try{
-    const prev = undoStack.pop();
-    const cur = drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height);
-    redoStack.push(cur);
-    drawCtx.putImageData(prev,0,0);
-    hasDrawn = true; updatePlaceholder();
-  }catch(e){ console.warn('undo failed', e); }
+  if(undoStack.length<1) return;
+  redoStack.push(canvas.toDataURL());
+  let last=undoStack.pop();
+  let img=new Image();
+  img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);};
+  img.src=last;
 }
 function redo(){
-  if(!redoStack.length) return;
-  try{
-    const next = redoStack.pop();
-    pushState();
-    drawCtx.putImageData(next,0,0);
-    hasDrawn = true; updatePlaceholder();
-  }catch(e){ console.warn('redo failed', e); }
+  if(redoStack.length<1) return;
+  undoStack.push(canvas.toDataURL());
+  let last=redoStack.pop();
+  let img=new Image();
+  img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);};
+  img.src=last;
 }
 
-/* ---------- size & transforms ---------- */
-function resizeCanvases(){
-  // choose CSS size responsive
-  const cssW = Math.min(760, Math.max(320, Math.round(window.innerWidth * 0.76)));
-  const cssH = Math.min(900, Math.max(320, Math.round(window.innerHeight * 0.66)));
-
-  [silCanvas, drawCanvas].forEach(c=>{
-    c.style.width = cssW + 'px';
-    c.style.height = cssH + 'px';
-  });
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  [silCanvas, drawCanvas].forEach(c=>{
-    c.width = Math.round(cssW * dpr);
-    c.height = Math.round(cssH * dpr);
-  });
-  // set contexts so CSS px => logical drawing units
-  silCtx.setTransform(dpr,0,0,dpr,0,0);
-  drawCtx.setTransform(dpr,0,0,dpr,0,0);
-
-  // redraw silhouette (keeps draw layer intact)
-  redrawSilhouette();
-}
-window.addEventListener('resize', resizeCanvases);
-resizeCanvases();
-
-/* ---------- dropdown helpers ---------- */
-function toggleDropdown(e,id){ e.stopPropagation(); document.querySelectorAll('.dropdown').forEach(dd=>dd.classList.remove('show')); document.getElementById(id).classList.toggle('show'); }
-function closeDropdowns(){ document.querySelectorAll('.dropdown').forEach(dd=>dd.classList.remove('show')); }
-document.addEventListener('click', ev=>{ if(!ev.target.closest('.dropdown')) closeDropdowns(); });
-document.querySelectorAll('.dropdown-content').forEach(dc=>dc && dc.addEventListener('pointerdown', ev=>ev.stopPropagation()) );
-
-/* ---------- placeholder ---------- */
-function updatePlaceholder(){ placeholder.style.display = (hasDrawn || silhouetteImg) ? 'none' : 'block'; }
-updatePlaceholder();
-
-/* ---------- silhouette (separate layer) ---------- */
-function setSilhouette(src){
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = ()=>{ silhouetteImg = img; redrawSilhouette(); updatePlaceholder(); };
-  img.onerror = ()=> console.warn('silhouette load failed', src);
-  img.src = src;
-}
-function uploadSilhouette(ev){
-  const f = ev.target.files && ev.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = e=>{
-    const img = new Image();
-    img.onload = ()=>{ silhouetteImg = img; redrawSilhouette(); updatePlaceholder(); };
-    img.src = e.target.result;
+// flood fill (pixel par pixel)
+function loadFillPattern(e){
+  let f=e.target.files[0]; if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{
+    let img=new Image();
+    img.onload=()=>{
+      const pc=document.createElement("canvas");
+      pc.width=patternSize; pc.height=patternSize;
+      pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
+      fillPattern=pc;
+    };
+    img.src=ev.target.result;
   };
   r.readAsDataURL(f);
 }
-function removeSilhouette(){
-  silhouetteImg = null;
-  // clear silhouette canvas only
-  silCtx.setTransform(dpr,0,0,dpr,0,0);
-  silCtx.clearRect(0,0,silCanvas.clientWidth,silCanvas.clientHeight);
+function setPatternSize(s){patternSize=parseInt(s);}
+function clearPattern(){fillPattern=null;}
+
+function floodFill(x,y){
+  const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const pixels=imageData.data;
+  const startPos=(Math.floor(y)*canvas.width+Math.floor(x))*4;
+  const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
+  const stack=[[Math.floor(x),Math.floor(y)]];
+  const visited=new Set();
+  while(stack.length){
+    const [cx,cy]=stack.pop();
+    if(cx<0||cy<0||cx>=canvas.width||cy>=canvas.height) continue;
+    const pos=(cy*canvas.width+cx)*4;
+    const key=cx+","+cy;
+    if(visited.has(key)) continue;
+    if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
+    visited.add(key);
+
+    if(fillPattern){
+      const px=(cx%patternSize), py=(cy%patternSize);
+      const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
+      pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
+    } else {
+      const rgb=hexToRgb(fillColor);
+      pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
+    }
+
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+  ctx.putImageData(imageData,0,0);
+  hasDrawn=true; updatePlaceholder();
+}
+function hexToRgb(hex){
+  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
+}
+
+// silhouette
+function setSilhouette(src){silhouette=new Image(); silhouette.onload=redraw; silhouette.src=src;}
+function removeSilhouette(){silhouette=null; redraw();}
+function uploadSilhouette(e){
+  let f=e.target.files[0]; if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{setSilhouette(ev.target.result);};
+  r.readAsDataURL(f);
+}
+
+function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
+function redraw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(silhouette){
+    const ratio=Math.min(canvas.width/silhouette.width,canvas.height/silhouette.height)*0.8;
+    let w=silhouette.width*ratio, h=silhouette.height*ratio;
+    ctx.drawImage(silhouette,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+  }
   updatePlaceholder();
 }
-function redrawSilhouette(){
-  silCtx.setTransform(dpr,0,0,dpr,0,0);
-  silCtx.clearRect(0,0,silCanvas.clientWidth,silCanvas.clientHeight);
-  if(!silhouetteImg) return;
-  const cssW = silCanvas.clientWidth, cssH = silCanvas.clientHeight;
-  const ratio = Math.min(cssW/silhouetteImg.width, cssH/silhouetteImg.height) * 0.9;
-  const w = silhouetteImg.width * ratio, h = silhouetteImg.height * ratio;
-  silCtx.drawImage(silhouetteImg, (cssW - w)/2, (cssH - h)/2, w, h);
+function clearDrawing(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  hasDrawn=false;
+  redraw(); // ne touche pas la silhouette
 }
-
-/* ---------- drawing on drawCanvas ---------- */
-let isDrawing = false;
-function getCanvasCSSPos(evt, canvasEl){
-  const r = canvasEl.getBoundingClientRect();
-  return { x: evt.clientX - r.left, y: evt.clientY - r.top };
-}
-
-drawCanvas.addEventListener('pointerdown', (evt)=>{
-  const pos = getCanvasCSSPos(evt, drawCanvas);
-  if(mode === 'fill'){
-    pushState();
-    floodFill(Math.floor(pos.x * dpr), Math.floor(pos.y * dpr));
-    hasDrawn = true; updatePlaceholder();
-    return;
-  }
-  // draw mode
-  pushState();
-  isDrawing = true;
-  drawCtx.beginPath();
-  drawCtx.lineCap = 'round';
-  drawCtx.lineJoin = 'round';
-  drawCtx.lineWidth = currentSize;
-  drawCtx.strokeStyle = currentColor;
-  drawCtx.moveTo(pos.x, pos.y);
-});
-drawCanvas.addEventListener('pointermove', (evt)=>{
-  if(!isDrawing) return;
-  const pos = getCanvasCSSPos(evt, drawCanvas);
-  drawCtx.lineTo(pos.x, pos.y);
-  drawCtx.strokeStyle = currentColor;
-  drawCtx.lineWidth = currentSize;
-  drawCtx.stroke();
-  hasDrawn = true; updatePlaceholder();
-});
-window.addEventListener('pointerup', ()=> {
-  if(isDrawing){ isDrawing = false; drawCtx.closePath(); }
-});
-
-/* ---------- mode toggles ---------- */
-function enableDrawMode(){ mode = 'draw'; drawCanvas.style.cursor = "url('icons/cray-cursor.svg') 0 16, crosshair"; document.getElementById('btnDrawMode').style.background = 'var(--btn-hover)'; document.getElementById('btnFillMode').style.background = 'var(--btn)'; }
-function enableFillMode(){ mode = 'fill'; drawCanvas.style.cursor = "url('icons/brush-cursor.svg') 0 16, cell"; document.getElementById('btnFillMode').style.background = 'var(--btn-hover)'; document.getElementById('btnDrawMode').style.background = 'var(--btn)'; }
-enableDrawMode();
-
-/* ---------- UI: color / size / pattern ---------- */
-document.getElementById('colorPicker').addEventListener('input', e=> { currentColor = e.target.value; });
-document.getElementById('sizeRange').addEventListener('input', e=> { currentSize = Number(e.target.value); document.getElementById('sizeLabel')?.textContent = currentSize + 'px'; });
-document.getElementById('fillColorPicker').addEventListener('input', e=> { currentFill = e.target.value; patternCanvas = null; });
-
-function onPatternUpload(ev){
-  const f = ev.target.files && ev.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    const img = new Image();
-    img.onload = ()=>{
-      const size = Number(document.getElementById('patternSizeSelect').value) || 50;
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      pc.getContext('2d').drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-      // when a pattern is loaded, future fill uses pattern until color changes
-    };
-    img.src = e.target.result;
+function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
+function uploadImage(e){
+  let f=e.target.files[0]; if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{
+    let img=new Image();
+    img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height); hasDrawn=true; updatePlaceholder();};
+    img.src=ev.target.result;
   };
-  reader.readAsDataURL(f);
+  r.readAsDataURL(f);
 }
-document.getElementById('patternFile').addEventListener('change', onPatternUpload);
-document.getElementById('patternSizeSelect').addEventListener('change', (e)=>{
-  const val = Number(e.target.value);
-  if(!patternCanvas) return;
-  const img = new Image();
-  img.src = patternCanvas.toDataURL();
-  img.onload = ()=> {
-    patternW = Math.round(val * dpr);
-    const pc = document.createElement('canvas');
-    pc.width = patternW; pc.height = patternW;
-    pc.getContext('2d').drawImage(img, 0, 0, patternW, patternW);
-    patternCanvas = pc;
-  };
-});
-
-/* ---------- flood fill (scanline) ---------- */
-function floodFill(seedX, seedY, tolerance = 30){
-  if(seedX < 0 || seedY < 0 || seedX >= drawCanvas.width || seedY >= drawCanvas.height) return;
-  let imgData;
-  try{ imgData = drawCtx.getImageData(0,0,drawCanvas.width, drawCanvas.height); }catch(e){ console.warn('getImageData failed', e); return; }
-  const data = imgData.data;
-  const w = drawCanvas.width, h = drawCanvas.height;
-  const idx = (seedY * w + seedX) * 4;
-  const sr = data[idx], sg = data[idx+1], sb = data[idx+2], sa = data[idx+3];
-
-  const match = (px,py) => {
-    const p = (py * w + px) * 4;
-    return Math.abs(data[p] - sr) <= tolerance && Math.abs(data[p+1] - sg) <= tolerance && Math.abs(data[p+2] - sb) <= tolerance && Math.abs(data[p+3] - sa) <= tolerance;
-  };
-
-  const visited = new Uint8Array(w * h);
-  const stack = [[seedX, seedY]];
-
-  while(stack.length){
-    const [x,y] = stack.pop();
-    let cx = x;
-    while(cx >= 0 && match(cx,y)) cx--;
-    cx++;
-    while(cx < w && match(cx,y)){
-      const pIdx = (y * w + cx) * 4;
-      if(patternCanvas){
-        // sample pattern at backing resolution
-        const px = cx % patternW;
-        const py = y % patternH;
-        const p = patternCanvas.getContext('2d').getImageData(px, py, 1,1).data;
-        data[pIdx] = p[0]; data[pIdx+1] = p[1]; data[pIdx+2] = p[2]; data[pIdx+3] = p[3] || 255;
-      } else {
-        const rgb = hexToRgb(currentFill);
-        data[pIdx] = rgb.r; data[pIdx+1] = rgb.g; data[pIdx+2] = rgb.b; data[pIdx+3] = 255;
-      }
-      if(y-1 >= 0 && match(cx, y-1) && !visited[(y-1)*w + cx]) stack.push([cx, y-1]);
-      if(y+1 < h && match(cx, y+1) && !visited[(y+1)*w + cx]) stack.push([cx, y+1]);
-      visited[y*w + cx] = 1;
-      cx++;
-    }
-  }
-  drawCtx.putImageData(imgData, 0, 0);
-}
-
-/* ---------- helpers ---------- */
-function hexToRgb(hex){
-  hex = hex.replace('#','');
-  if(hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
-  const r = parseInt(hex.substr(0,2),16);
-  const g = parseInt(hex.substr(2,2),16);
-  const b = parseInt(hex.substr(4,2),16);
-  return {r,g,b};
-}
-
-/* ---------- import image into draw layer ---------- */
-function onImportImage(ev){
-  const f = ev.target.files && ev.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    const img = new Image();
-    img.onload = ()=>{
-      pushState();
-      // draw image to fill CSS area (drawCtx coordinates are CSS pixels)
-      drawCtx.drawImage(img, 0, 0, drawCanvas.clientWidth, drawCanvas.clientHeight);
-      hasDrawn = true; updatePlaceholder();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-
-/* ---------- clear only drawings ---------- */
-function clearDrawings(){
-  pushState();
-  drawCtx.setTransform(dpr,0,0,dpr,0,0);
-  drawCtx.clearRect(0,0, drawCanvas.clientWidth, drawCanvas.clientHeight);
-  hasDrawn = false; updatePlaceholder();
-}
-
-/* ---------- download: merge silhouette + drawing ---------- */
-function downloadPNG(){
-  const cssW = drawCanvas.clientWidth, cssH = drawCanvas.clientHeight;
-  const tmp = document.createElement('canvas');
-  tmp.width = Math.round(cssW * dpr);
-  tmp.height = Math.round(cssH * dpr);
-  const tctx = tmp.getContext('2d');
-  // draw silhouette then drawing (silCanvas/drawCanvas are already at backing resolution)
-  tctx.drawImage(silCanvas, 0, 0, tmp.width, tmp.height);
-  tctx.drawImage(drawCanvas, 0, 0, tmp.width, tmp.height);
-  const a = document.createElement('a');
-  a.href = tmp.toDataURL('image/png');
-  a.download = 'croquis.png';
-  a.click();
-}
-
-/* expose needed functions globally for HTML */
-window.toggleDropdown = toggleDropdown;
-window.closeDropdowns = closeDropdowns;
-window.setSilhouette = setSilhouette;
-window.uploadSilhouette = uploadSilhouette;
-window.removeSilhouette = removeSilhouette;
-window.enableDrawMode = enableDrawMode;
-window.enableFillMode = enableFillMode;
-window.undo = undo;
-window.redo = redo;
-window.clearDrawings = clearDrawings;
-window.downloadPNG = downloadPNG;
-window.onImportImage = onImportImage;
-window.onPatternUpload = onPatternUpload;
-
-/* initial state */
-pushState();
-updatePlaceholder();
-
 </script>
 </body>
 </html>
