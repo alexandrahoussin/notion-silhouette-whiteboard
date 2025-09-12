@@ -200,9 +200,6 @@
   <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
   <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
   <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
-  <label><img src="icons/plus.svg"> Importer
-    <input type="file" accept="image/*" onchange="uploadImage(event)">
-  </label>
 </footer>
 
 <script>
@@ -232,6 +229,7 @@ function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.cl
 
 // dessin
 canvas.addEventListener("mousedown",e=>{
+  closeDropdowns(); // ✅ ferme menus quand on dessine/remplit
   if(fillMode){ floodFill(e.offsetX,e.offsetY); saveState(); return; }
   drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX,e.offsetY);
 });
@@ -374,16 +372,6 @@ function clearDrawing(){
   redraw();
 }
 function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
-function uploadImage(e){
-  let f=e.target.files[0]; if(!f) return;
-  let r=new FileReader();
-  r.onload=ev=>{
-    let img=new Image();
-    img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height); hasDrawn=true; updatePlaceholder();};
-    img.src=ev.target.result;
-  };
-  r.readAsDataURL(f);
-}
 </script>
 </body>
 </html>
