@@ -37,6 +37,7 @@
       border: 1px solid #ccc;
       background: white;
       display: block;
+      touch-action: none; /* 🔑 empêche le scroll en dessin */
     }
     button, label {
       background:var(--btn);
@@ -127,7 +128,7 @@
 <body>
 
 <header>
-  <!-- Silhouettes -->
+  <!-- menus identiques -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
     <div class="dropdown-content">
@@ -140,7 +141,6 @@
     </div>
   </div>
 
-  <!-- Dessin -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Dessin ▼</button>
     <div class="dropdown-content">
@@ -155,7 +155,6 @@
     </div>
   </div>
 
-  <!-- Remplissage -->
   <div class="dropdown">
     <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
@@ -179,7 +178,6 @@
     </div>
   </div>
 
-  <!-- Modes -->
   <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
   <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
 </header>
@@ -209,13 +207,13 @@ let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
 const placeholder=document.getElementById("placeholder");
 
-// buffer pour garder le dessin
 const buffer=document.createElement("canvas");
 const bctx=buffer.getContext("2d");
 
-// zoom et déplacement
 let scale=1, offsetX=0, offsetY=0;
 let isPanning=false, startPan={x:0,y:0};
+
+let pinchStartDist=0, pinchStartScale=1;
 
 function resizeCanvas(){
   canvas.width=window.innerWidth*0.8;
@@ -227,6 +225,7 @@ function resizeCanvas(){
 window.addEventListener("resize",resizeCanvas);
 resizeCanvas();
 
+// menus
 function toggleDropdown(b){
   const dd=b.parentElement;
   document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));
@@ -234,120 +233,85 @@ function toggleDropdown(b){
 }
 function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));}
 
-// dessin
-canvas.addEventListener("mousedown",e=>{
+//--- SOURIS ---
+canvas.addEventListener("mousedown",e=>startDraw(e.offsetX,e.offsetY));
+canvas.addEventListener("mousemove",e=>moveDraw(e.offsetX,e.offsetY));
+canvas.addEventListener("mouseup",endDraw);
+
+//--- TOUCH ---
+canvas.addEventListener("touchstart",e=>{
+  if(e.touches.length===1){ // un doigt = dessin
+    const t=e.touches[0];
+    const rect=canvas.getBoundingClientRect();
+    const x=t.clientX-rect.left, y=t.clientY-rect.top;
+    startDraw(x,y);
+  }
+  if(e.touches.length===2){ // deux doigts = pinch ou pan
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    pinchStartDist=Math.sqrt(dx*dx+dy*dy);
+    pinchStartScale=scale;
+  }
+  e.preventDefault();
+});
+canvas.addEventListener("touchmove",e=>{
+  if(e.touches.length===1 && drawing){
+    const t=e.touches[0];
+    const rect=canvas.getBoundingClientRect();
+    const x=t.clientX-rect.left, y=t.clientY-rect.top;
+    moveDraw(x,y);
+  }
+  if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+
+    let factor=dist/pinchStartDist;
+    scale=pinchStartScale*factor;
+    redraw();
+  }
+  e.preventDefault();
+});
+canvas.addEventListener("touchend",e=>{
+  endDraw();
+  e.preventDefault();
+});
+
+//--- DESSIN ---
+function startDraw(x,y){
   closeDropdowns();
-  if(panMode){isPanning=true; startPan={x:e.clientX,y:e.clientY}; return;}
-  if(fillMode){ floodFill(e.offsetX,e.offsetY); saveState(); return; }
+  if(panMode && !fillMode){isPanning=true; startPan={x,y}; return;}
+  if(fillMode){ floodFill(x,y); saveState(); return; }
   drawing=true;
   bctx.beginPath();
-  const {x,y}=toBufferCoords(e.offsetX,e.offsetY);
-  bctx.moveTo(x,y);
-});
-canvas.addEventListener("mouseup",()=>{drawing=false; isPanning=false; saveState(); redraw();});
-canvas.addEventListener("mousemove",e=>{
+  const {x:bx,y:by}=toBufferCoords(x,y);
+  bctx.moveTo(bx,by);
+}
+function moveDraw(x,y){
   if(panMode && isPanning){
-    offsetX += (e.clientX-startPan.x);
-    offsetY += (e.clientY-startPan.y);
-    startPan={x:e.clientX,y:e.clientY};
+    offsetX += (x-startPan.x);
+    offsetY += (y-startPan.y);
+    startPan={x,y};
     redraw();
     return;
   }
   if(!drawing||fillMode) return;
   hasDrawn=true; updatePlaceholder();
   bctx.lineWidth=currentSize; bctx.lineCap="round"; bctx.strokeStyle=currentColor;
-  const {x,y}=toBufferCoords(e.offsetX,e.offsetY);
-  bctx.lineTo(x,y); bctx.stroke();
+  const {x:bx,y:by}=toBufferCoords(x,y);
+  bctx.lineTo(bx,by); bctx.stroke();
   redraw();
-});
+}
+function endDraw(){
+  if(drawing){ saveState(); }
+  drawing=false; isPanning=false; redraw();
+}
 
 function toBufferCoords(x,y){
   return {x:(x-offsetX)/scale, y:(y-offsetY)/scale};
 }
 
-function setColor(c){currentColor=c;}
-function setSize(s){currentSize=s;}
-function setFillColor(c){fillColor=c;}
-
-function setDrawMode(){fillMode=false; panMode=false;}
-function setFillMode(){fillMode=true; panMode=false;}
-function togglePanMode(){panMode=!panMode;}
-
-function zoomIn(){scale*=1.2; redraw();}
-function zoomOut(){scale/=1.2; redraw();}
-
-// Undo/Redo
-function saveState(){
-  undoStack.push(buffer.toDataURL());
-  redoStack=[];
-}
-function undo(){
-  if(undoStack.length<1) return;
-  redoStack.push(buffer.toDataURL());
-  let last=undoStack.pop();
-  let img=new Image();
-  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
-  img.src=last;
-}
-function redo(){
-  if(redoStack.length<1) return;
-  undoStack.push(buffer.toDataURL());
-  let last=redoStack.pop();
-  let img=new Image();
-  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
-  img.src=last;
-}
-
-// flood fill identique, appliqué sur buffer
-function floodFill(x,y){
-  const {x:bx,y:by}=toBufferCoords(x,y);
-  const imageData=bctx.getImageData(0,0,buffer.width,buffer.height);
-  const pixels=imageData.data;
-  const startPos=(Math.floor(by)*buffer.width+Math.floor(bx))*4;
-  const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
-  const stack=[[Math.floor(bx),Math.floor(by)]];
-  const visited=new Set();
-  while(stack.length){
-    const [cx,cy]=stack.pop();
-    if(cx<0||cy<0||cx>=buffer.width||cy>=buffer.height) continue;
-    const pos=(cy*buffer.width+cx)*4;
-    const key=cx+","+cy;
-    if(visited.has(key)) continue;
-    if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
-    visited.add(key);
-
-    if(usePattern && fillPattern){
-      const px=(cx%patternSize), py=(cy%patternSize);
-      const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
-      pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
-    } else {
-      const rgb=hexToRgb(fillColor);
-      pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
-    }
-    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
-  }
-  bctx.putImageData(imageData,0,0);
-  hasDrawn=true; updatePlaceholder();
-  redraw();
-}
-
-function hexToRgb(hex){
-  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
-}
-
-// silhouette
-function setSilhouette(src){silhouette=new Image(); silhouette.onload=()=>{bctx.drawImage(silhouette,0,0,buffer.width,buffer.height); redraw();}; silhouette.src=src;}
-function removeSilhouette(){silhouette=null; redraw();}
-function uploadSilhouette(e){
-  let f=e.target.files[0]; if(!f) return;
-  let r=new FileReader();
-  r.onload=ev=>{setSilhouette(ev.target.result);};
-  r.readAsDataURL(f);
-}
-
-function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
-
+//--- REDRAW ---
 function redraw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -358,8 +322,13 @@ function redraw(){
   updatePlaceholder();
 }
 
-function clearDrawing(){bctx.clearRect(0,0,buffer.width,buffer.height); hasDrawn=false; redraw();}
-function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
+//--- ZOOM BUTTONS ---
+function zoomIn(){scale*=1.2; redraw();}
+function zoomOut(){scale/=1.2; redraw();}
+function togglePanMode(){panMode=!panMode;}
+
+//--- Placeholder ---
+function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
 </script>
 </body>
 </html>
