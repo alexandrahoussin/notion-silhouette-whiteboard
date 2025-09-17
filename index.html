@@ -2,462 +2,367 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Whiteboard Couture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whiteboard Silhouettes</title>
   <style>
-    :root {
-      --btn:#E0EBDB;
-      --btn-hover:#FE6FA8;
-    }
     body {
-      font-family: sans-serif;
       margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
       display: flex;
       flex-direction: column;
-      height: 100vh;
-    }
-    header, footer {
-      display: flex;
-      justify-content: center;
       align-items: center;
-      gap: 12px;
-      padding: 10px;
-      background: #fafafa;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      flex-wrap: wrap;
     }
-    .canvas-container {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      overflow: hidden;
-    }
-    canvas {
-      border: 1px solid #ccc;
-      background: white;
-      display: block;
-      touch-action: none;
-    }
-    button, label {
-      background:var(--btn);
-      border:none;
-      padding:8px 12px;
-      border-radius:8px;
-      cursor:pointer;
-      color:#666;
-      font-size:14px;
-      min-width:120px;
-      height:40px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-    }
-    button img, label img { width:18px; height:18px; }
-    button:hover, label:hover {
-      background:var(--btn-hover);
-      color:white;
-    }
-    input[type="file"] { display:none; }
 
-    /* Dropdown menus */
+    header {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      background: #fff;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
     .dropdown {
       position: relative;
+      display: inline-block;
     }
+
+    .dropbtn {
+      background-color: #4CAF50;
+      color: white;
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
     .dropdown-content {
       display: none;
       position: absolute;
-      background: white;
-      min-width: 220px;
-      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-      border:1px solid #ddd;
-      border-radius:6px;
-      z-index:1000;
-      top:100%;
-      left:0;
-    }
-    .dropdown-content button, .dropdown-content label {
-      background: white !important;
-      color: #333 !important;
-      width: 100%;
-      border-radius:0;
-      text-align:left;
-      font-size:14px;
-      padding:10px 14px;
-    }
-    .dropdown-content button:hover, .dropdown-content label:hover {
-      background: #f1f1f1 !important;
-      color:#000 !important;
-    }
-    .dropdown.show .dropdown-content { display:block; }
-
-    .tool-item {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:8px 12px;
-    }
-    .tool-item label { font-size:13px; color:#333; }
-    .tool-item input[type="color"], 
-    .tool-item select {
-      margin-left:10px;
+      background-color: white;
+      min-width: 180px;
+      box-shadow: 0px 4px 6px rgba(0,0,0,0.15);
+      z-index: 1;
+      border-radius: 6px;
+      padding: 8px;
     }
 
-    .active-option {
-      border:2px solid var(--btn-hover) !important;
-      border-radius:6px;
-    }
-
-    #patternPreview {
-      width:30px;
-      height:30px;
-      border:1px solid #ccc;
-      border-radius:4px;
-      margin-left:8px;
-      background-size:cover;
-      background-position:center;
+    .dropdown-content label,
+    .dropdown-content button {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 6px;
+      margin: 4px 0;
+      text-align: left;
+      font-size: 14px;
+      background: none;
+      border: none;
       cursor: pointer;
+      width: 100%;
+    }
+
+    .dropdown-content input[type="file"] {
+      width: 100%;
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    .color-box, .pattern-box {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    .selected {
+      outline: 2px solid deeppink;
+    }
+
+    #toolbar {
+      margin: 10px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      margin: 20px auto;
+      display: block;
+      background: white;
+      max-width: 95vw;
+      max-height: 70vh;
+      cursor: crosshair;
     }
 
     #placeholder {
       position: absolute;
-      top: 50%;
+      top: 60px;
       left: 50%;
-      transform: translate(-50%, -50%);
-      color: #888;
+      transform: translateX(-50%);
+      color: #aaa;
       font-size: 18px;
-      text-align: center;
       pointer-events: none;
+    }
+
+    footer {
+      margin: 10px 0;
+      display: flex;
+      gap: 10px;
     }
   </style>
 </head>
 <body>
-
-<header>
-  <!-- Menu Silhouettes -->
-  <div class="dropdown">
-    <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
-    <div class="dropdown-content">
-      <button onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
-      <button onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
-      <button onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
-      <button onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
-      <label><input type="file" onchange="uploadSilhouette(event)">Ajouter une image</label>
-      <button onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
-    </div>
-  </div>
-
-  <!-- Menu Dessin -->
-  <div class="dropdown">
-    <button onclick="toggleDropdown(this)"> Dessin ▼</button>
-    <div class="dropdown-content">
-      <div class="tool-item">
-        <label>Couleur</label>
-        <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
-      </div>
-      <div class="tool-item">
-        <label>Largeur</label>
-        <input type="range" min="1" max="20" value="2" onchange="setSize(this.value)">
+  <header>
+    <!-- Menu Silhouette -->
+    <div class="dropdown">
+      <button class="dropbtn">Silhouette</button>
+      <div class="dropdown-content">
+        <button onclick="addSilhouette('femme.png')">Femme</button>
+        <button onclick="addSilhouette('homme.png')">Homme</button>
+        <button onclick="addSilhouette('enfant.png')">Enfant</button>
+        <button onclick="addSilhouette('bebe.png')">Bébé</button>
+        <label>
+          Ajouter une image
+          <input type="file" accept="image/*" onchange="uploadSilhouette(event)">
+        </label>
+        <button onclick="removeSilhouette()">Supprimer silhouette</button>
       </div>
     </div>
-  </div>
 
-  <!-- Menu Remplissage -->
-  <div class="dropdown">
-    <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
-    <div class="dropdown-content">
-      <div class="tool-item">
-        <button id="colorModeBtn" onclick="setFillModeColor()">Couleur</button>
-        <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
-      </div>
-      <div class="tool-item">
-        <button id="patternModeBtn" onclick="setFillModePattern()">Motif</button>
-        <div id="patternPreview" onclick="document.getElementById('patternInput').click()"></div>
-        <input type="file" id="patternInput" accept="image/*" onchange="loadFillPattern(event)">
-      </div>
-      <div class="tool-item">
-        <label>Taille motif</label>
-        <select id="patternSize" onchange="setPatternSize(this.value)">
-          <option value="25">25px</option>
-          <option value="50" selected>50px</option>
-          <option value="100">100px</option>
-        </select>
+    <!-- Menu Dessin -->
+    <div class="dropdown">
+      <button class="dropbtn">Dessin</button>
+      <div class="dropdown-content">
+        <label>
+          Couleur
+          <input type="color" id="drawColor" onchange="setDrawColor(this.value)">
+        </label>
+        <label>
+          Largeur
+          <input type="range" id="lineWidth" min="1" max="20" value="2" onchange="setLineWidth(this.value)">
+        </label>
       </div>
     </div>
+
+    <!-- Menu Remplissage -->
+    <div class="dropdown">
+      <button class="dropbtn">Remplissage</button>
+      <div class="dropdown-content">
+        <label>
+          Couleur
+          <div id="fillColorBox" class="color-box selected" style="background: red;" onclick="setFillMode('color')"></div>
+          <input type="color" id="fillColor" onchange="setFillColor(this.value)" style="display:none;">
+        </label>
+        <label>
+          Motif
+          <div id="patternBox" class="pattern-box" onclick="setFillMode('pattern')"></div>
+          <input type="file" id="patternUpload" accept="image/*" onchange="setPattern(event)" style="display:none;">
+        </label>
+      </div>
+    </div>
+
+    <!-- Modes -->
+    <button id="drawModeBtn" onclick="setMode('draw')">✏️ Mode dessin</button>
+    <button id="fillModeBtn" onclick="setMode('fill')">🪣 Mode remplissage</button>
+    <button id="moveModeBtn" onclick="setMode('move')">✋ Déplacer</button>
+  </header>
+
+  <div id="toolbar">
+    <button onclick="undo()">↩️ Annuler</button>
+    <button onclick="redo()">↪️ Rétablir</button>
+    <button onclick="clearCanvas()">🗑️ Effacer</button>
+    <button onclick="zoomIn()">➕ Zoom</button>
+    <button onclick="zoomOut()">➖ Dézoom</button>
   </div>
 
-  <!-- Boutons mode -->
-  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
-  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
-</header>
+  <div id="placeholder">Ici je laisse place à mon imagination, je peux également choisir une silhouette..</div>
+  <canvas id="canvas" width="800" height="600"></canvas>
 
-<div class="canvas-container">
-  <canvas id="board"></canvas>
-  <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
-</div>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
 
-<footer>
-  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
-  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
-  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
-  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
-  <button onclick="setPanMode()"><img src="icons/move.svg"> Déplacer</button>
-  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
-  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
-</footer>
+    let drawing = false;
+    let mode = 'draw';
+    let drawColor = '#000';
+    let fillColor = '#f00';
+    let lineWidth = 2;
+    let fillMode = 'color';
+    let fillPattern = null;
+    let silhouetteImg = null;
 
-<script>
-const canvas=document.getElementById("board");
-const ctx=canvas.getContext("2d");
-let buffer=document.createElement("canvas");
-let bctx=buffer.getContext("2d");
+    let scale = 1;
+    let offsetX = 0, offsetY = 0;
 
-let drawing=false, fillMode=false, panMode=false;
-let silhouette=null, hasDrawn=false;
-let currentColor="#000000", currentSize=2;
-let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
-let undoStack=[], redoStack=[];
-const placeholder=document.getElementById("placeholder");
+    let history = [];
+    let historyStep = -1;
 
-let scale=1, offsetX=0, offsetY=0;
-let lastX=0, lastY=0;
-
-function resizeCanvas(){
-  canvas.width=window.innerWidth*0.8;
-  canvas.height=window.innerHeight*0.6;
-  buffer.width=canvas.width;
-  buffer.height=canvas.height;
-  redraw();
-}
-window.addEventListener("resize",resizeCanvas);
-resizeCanvas();
-
-function toggleDropdown(b){
-  const dd=b.parentElement;
-  document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));
-  dd.classList.toggle("show");
-}
-function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));}
-
-// --- Dessin et remplissage
-function getCanvasCoords(e){
-  const rect=canvas.getBoundingClientRect();
-  const clientX=e.touches?e.touches[0].clientX:e.clientX;
-  const clientY=e.touches?e.touches[0].clientY:e.clientY;
-  const x=(clientX-rect.left-offsetX)/scale;
-  const y=(clientY-rect.top-offsetY)/scale;
-  return {x,y};
-}
-
-function startDraw(e){
-  closeDropdowns();
-  const pos=getCanvasCoords(e);
-  if(fillMode){
-    floodFill(Math.floor(pos.x),Math.floor(pos.y));
-    saveState();
-    return;
-  }
-  if(panMode){
-    drawing=true;
-    lastX=e.clientX||e.touches[0].clientX;
-    lastY=e.clientY||e.touches[0].clientY;
-    return;
-  }
-  drawing=true;
-  bctx.beginPath();
-  bctx.moveTo(pos.x,pos.y);
-}
-function moveDraw(e){
-  if(!drawing) return;
-  if(panMode){
-    const clientX=e.clientX||e.touches[0].clientX;
-    const clientY=e.clientY||e.touches[0].clientY;
-    offsetX+=clientX-lastX;
-    offsetY+=clientY-lastY;
-    lastX=clientX; lastY=clientY;
-    redraw();
-    return;
-  }
-  if(fillMode) return;
-  const pos=getCanvasCoords(e);
-  hasDrawn=true; updatePlaceholder();
-  bctx.lineWidth=currentSize;
-  bctx.lineCap="round";
-  bctx.strokeStyle=currentColor;
-  bctx.lineTo(pos.x,pos.y);
-  bctx.stroke();
-  redraw();
-}
-function endDraw(){
-  if(drawing && !panMode) saveState();
-  drawing=false;
-}
-
-canvas.addEventListener("mousedown",startDraw);
-canvas.addEventListener("mousemove",moveDraw);
-canvas.addEventListener("mouseup",endDraw);
-canvas.addEventListener("mouseleave",endDraw);
-
-canvas.addEventListener("touchstart",e=>{startDraw(e);});
-canvas.addEventListener("touchmove",e=>{moveDraw(e); e.preventDefault();},{passive:false});
-canvas.addEventListener("touchend",endDraw);
-
-// --- Paramètres
-function setColor(c){currentColor=c;}
-function setSize(s){currentSize=s;}
-function setFillColor(c){fillColor=c;}
-
-function setDrawMode(){
-  fillMode=false; panMode=false;
-  document.getElementById("draw-btn").style.background="var(--btn-hover)";
-  document.getElementById("fill-btn").style.background="var(--btn)";
-  canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
-}
-function setFillMode(){
-  fillMode=true; panMode=false;
-  document.getElementById("fill-btn").style.background="var(--btn-hover)";
-  document.getElementById("draw-btn").style.background="var(--btn)";
-  canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
-}
-function setPanMode(){
-  panMode=true; fillMode=false;
-  document.getElementById("draw-btn").style.background="var(--btn)";
-  document.getElementById("fill-btn").style.background="var(--btn)";
-  canvas.style.cursor="move";
-}
-
-// --- Undo/Redo
-function saveState(){
-  undoStack.push(buffer.toDataURL());
-  redoStack=[];
-}
-function undo(){
-  if(undoStack.length<1) return;
-  redoStack.push(buffer.toDataURL());
-  let last=undoStack.pop();
-  let img=new Image();
-  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
-  img.src=last;
-}
-function redo(){
-  if(redoStack.length<1) return;
-  undoStack.push(buffer.toDataURL());
-  let last=redoStack.pop();
-  let img=new Image();
-  img.onload=()=>{bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw();};
-  img.src=last;
-}
-
-// --- Remplissage
-function setFillModeColor(){
-  usePattern=false;
-  document.getElementById("colorModeBtn").classList.add("active-option");
-  document.getElementById("patternModeBtn").classList.remove("active-option");
-}
-function setFillModePattern(){
-  usePattern=true;
-  document.getElementById("patternModeBtn").classList.add("active-option");
-  document.getElementById("colorModeBtn").classList.remove("active-option");
-}
-
-function loadFillPattern(e){
-  let f=e.target.files[0]; if(!f) return;
-  let r=new FileReader();
-  r.onload=ev=>{
-    let img=new Image();
-    img.onload=()=>{
-      const pc=document.createElement("canvas");
-      pc.width=patternSize; pc.height=patternSize;
-      pc.getContext("2d").drawImage(img,0,0,patternSize,patternSize);
-      fillPattern=pc;
-      document.getElementById("patternPreview").style.backgroundImage=`url(${ev.target.result})`;
-      setFillModePattern();
-    };
-    img.src=ev.target.result;
-  };
-  r.readAsDataURL(f);
-}
-function setPatternSize(s){patternSize=parseInt(s);}
-
-function floodFill(x,y){
-  const imageData=bctx.getImageData(0,0,buffer.width,buffer.height);
-  const pixels=imageData.data;
-  const startPos=(y*buffer.width+x)*4;
-  const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
-  const stack=[[x,y]];
-  const visited=new Set();
-  while(stack.length){
-    const [cx,cy]=stack.pop();
-    if(cx<0||cy<0||cx>=buffer.width||cy>=buffer.height) continue;
-    const pos=(cy*buffer.width+cx)*4;
-    const key=cx+","+cy;
-    if(visited.has(key)) continue;
-    if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
-    visited.add(key);
-
-    if(usePattern && fillPattern){
-      const px=(cx%patternSize), py=(cy%patternSize);
-      const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
-      pixels[pos]=pctx[0]; pixels[pos+1]=pctx[1]; pixels[pos+2]=pctx[2]; pixels[pos+3]=pctx[3];
-    } else {
-      const rgb=hexToRgb(fillColor);
-      pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
+    function saveState() {
+      history = history.slice(0, historyStep + 1);
+      history.push(canvas.toDataURL());
+      historyStep++;
     }
 
-    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
-  }
-  bctx.putImageData(imageData,0,0);
-  hasDrawn=true; updatePlaceholder();
-  redraw();
-}
-function hexToRgb(hex){
-  const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
-}
+    function restoreState(step) {
+      const img = new Image();
+      img.src = history[step];
+      img.onload = () => {
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0);
+        ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
+      };
+    }
 
-// --- Silhouettes
-function setSilhouette(src){silhouette=new Image(); silhouette.onload=redraw; silhouette.src=src;}
-function removeSilhouette(){silhouette=null; redraw();}
-function uploadSilhouette(e){
-  let f=e.target.files[0]; if(!f) return;
-  let r=new FileReader();
-  r.onload=ev=>{setSilhouette(ev.target.result);};
-  r.readAsDataURL(f);
-}
+    function undo() { if (historyStep > 0) restoreState(--historyStep); }
+    function redo() { if (historyStep < history.length-1) restoreState(++historyStep); }
 
-// --- Redraw
-function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
-function redraw(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+    function setMode(m) {
+      mode = m;
+      canvas.style.cursor = m === 'move' ? 'grab' : (m === 'fill' ? 'url("bucket.svg"), auto' : 'crosshair');
+    }
 
-  // 1. D'abord la silhouette
-  if(silhouette){
-    const ratio=Math.min(buffer.width/silhouette.width,buffer.height/silhouette.height)*0.8;
-    let w=silhouette.width*ratio, h=silhouette.height*ratio;
-    ctx.drawImage(silhouette,(buffer.width-w)/2,(buffer.height-h)/2,w,h);
-  }
+    function setDrawColor(color) { drawColor = color; }
+    function setFillColor(color) { fillColor = color; document.getElementById('fillColorBox').style.background = color; }
+    function setLineWidth(width) { lineWidth = width; }
 
-  // 2. Ensuite le dessin
-  ctx.drawImage(buffer,0,0);
+    function setFillMode(mode) {
+      fillMode = mode;
+      document.getElementById('fillColorBox').classList.toggle('selected', mode==='color');
+      document.getElementById('patternBox').classList.toggle('selected', mode==='pattern');
+    }
 
-  updatePlaceholder();
-}
+    function setPattern(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        fillPattern = ctx.createPattern(img, 'repeat');
+        document.getElementById('patternBox').style.backgroundImage = `url(${img.src})`;
+        document.getElementById('patternBox').style.backgroundSize = 'cover';
+      };
+    }
 
-// --- Clear & Download
-function clearDrawing(){
-  bctx.clearRect(0,0,buffer.width,buffer.height);
-  hasDrawn=false;
-  redraw();
-}
-function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
+    function addSilhouette(src) {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => { silhouetteImg = img; redraw(); };
+    }
 
-// --- Zoom
-function zoomIn(){scale*=1.2; redraw();}
-function zoomOut(){scale/=1.2; redraw();}
-</script>
+    function uploadSilhouette(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => { silhouetteImg = img; redraw(); };
+    }
+
+    function removeSilhouette() { silhouetteImg = null; redraw(); }
+
+    function clearCanvas() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      if (silhouetteImg) ctx.drawImage(silhouetteImg, canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
+      saveState();
+    }
+
+    function zoomIn() { scale *= 1.2; redraw(); }
+    function zoomOut() { scale /= 1.2; redraw(); }
+
+    function redraw() {
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
+      if (historyStep >= 0) {
+        const img = new Image();
+        img.src = history[historyStep];
+        img.onload = () => {
+          ctx.drawImage(img,0,0);
+          if (silhouetteImg) ctx.drawImage(silhouetteImg, canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
+        };
+      } else if (silhouetteImg) {
+        ctx.drawImage(silhouetteImg, canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
+      }
+    }
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left - offsetX) / scale,
+        y: (clientY - rect.top - offsetY) / scale
+      };
+    }
+
+    function startDraw(e) {
+      if (mode === 'draw') {
+        drawing = true;
+        const pos = getCanvasPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        placeholder.style.display = 'none';
+      } else if (mode === 'fill') {
+        const pos = getCanvasPos(e);
+        ctx.fillStyle = (fillMode === 'color') ? fillColor : fillPattern;
+        ctx.fillRect(pos.x-1, pos.y-1, 3, 3); // basic fill placeholder
+        saveState();
+      } else if (mode === 'move') {
+        drawing = true;
+        canvas.style.cursor = 'grabbing';
+        lastX = e.clientX || e.touches[0].clientX;
+        lastY = e.clientY || e.touches[0].clientY;
+      }
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      if (mode === 'draw') {
+        const pos = getCanvasPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      } else if (mode === 'move') {
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        offsetX += (clientX - lastX);
+        offsetY += (clientY - lastY);
+        lastX = clientX;
+        lastY = clientY;
+        redraw();
+      }
+    }
+
+    function endDraw() {
+      if (drawing && mode === 'draw') {
+        ctx.closePath();
+        saveState();
+      }
+      drawing = false;
+      if (mode === 'move') canvas.style.cursor = 'grab';
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mouseleave', endDraw);
+    canvas.addEventListener('touchstart', startDraw);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', endDraw);
+
+    saveState();
+  </script>
 </body>
 </html>
