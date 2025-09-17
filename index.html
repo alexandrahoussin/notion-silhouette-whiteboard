@@ -76,6 +76,7 @@
       z-index:1000;
       top:100%;
       left:0;
+      overflow: hidden; /* 🔹 garde les boutons dans le container */
     }
     .dropdown-content button, 
     .dropdown-content label {
@@ -86,6 +87,7 @@
       text-align:left;
       font-size:14px;
       padding:10px 14px;
+      box-sizing: border-box;
     }
     .dropdown-content button:hover, 
     .dropdown-content label:hover {
@@ -108,17 +110,16 @@
       min-width:70px;
       text-align:left;
     }
-    .tool-item input[type="color"], 
-    .tool-item select,
-    .tool-item input[type="range"] {
-      flex:1;
-    }
 
-    .active-option {
-      border:2px solid var(--btn-hover) !important;
-      border-radius:6px;
+    /* Taille uniforme des carrés couleur/motif */
+    #fillColor {
+      width:32px;
+      height:32px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      padding:0;
+      cursor:pointer;
     }
-
     #patternPreview {
       width:32px;
       height:32px;
@@ -129,13 +130,9 @@
       cursor: pointer;
     }
 
-    #fillColor {
-      width:32px;
-      height:32px;
-      border:1px solid #ccc;
-      border-radius:4px;
-      padding:0;
-      cursor:pointer;
+    .active-option {
+      border:2px solid var(--btn-hover) !important;
+      border-radius:6px;
     }
 
     #placeholder {
@@ -224,7 +221,7 @@
   <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
   <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
 </footer>
-
+  
 <script>
 const canvas=document.getElementById("board");
 const ctx=canvas.getContext("2d");
