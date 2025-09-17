@@ -37,6 +37,7 @@
       border: 1px solid #ccc;
       background: white;
       display: block;
+      touch-action: none;
     }
     button, label {
       background:var(--btn);
@@ -136,7 +137,7 @@
 <header>
   <!-- Menu Silhouettes -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/silhouette.svg"> Silhouette ▼</button>
+    <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
     <div class="dropdown-content">
       <button onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
       <button onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
@@ -149,7 +150,7 @@
 
   <!-- Menu Dessin -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/pencil.svg"> Dessin ▼</button>
+    <button onclick="toggleDropdown(this)"> Dessin ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
         <label>Couleur</label>
@@ -164,7 +165,7 @@
 
   <!-- Menu Remplissage -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/fill.svg"> Remplissage ▼</button>
+    <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
         <button id="colorModeBtn" onclick="setFillModeColor()">Couleur</button>
@@ -201,25 +202,26 @@
   <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
   <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
   <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <button onclick="setPanMode()"><img src="icons/move.svg"> Déplacer</button>
   <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
   <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
-  <button onclick="setMoveMode()"><img src="icons/move.svg"> Déplacer</button>
 </footer>
 
 <script>
 const canvas=document.getElementById("board");
 const ctx=canvas.getContext("2d");
-let drawing=false, fillMode=false, moveMode=false;
+let buffer=document.createElement("canvas");
+let bctx=buffer.getContext("2d");
+
+let drawing=false, fillMode=false, panMode=false;
 let silhouette=null, hasDrawn=false;
 let currentColor="#000000", currentSize=2;
 let fillColor="#ff0000", fillPattern=null, patternSize=50, usePattern=false;
 let undoStack=[], redoStack=[];
 const placeholder=document.getElementById("placeholder");
 
-// zoom & pan
 let scale=1, offsetX=0, offsetY=0;
-let buffer=document.createElement("canvas");
-let bctx=buffer.getContext("2d");
+let lastX=0, lastY=0;
 
 function resizeCanvas(){
   canvas.width=window.innerWidth*0.8;
@@ -238,78 +240,94 @@ function toggleDropdown(b){
 }
 function closeDropdowns(){document.querySelectorAll(".dropdown").forEach(d=>d.classList.remove("show"));}
 
-// dessin
-function getCanvasPos(e){
+// --- Dessin et remplissage
+function getCanvasCoords(e){
   const rect=canvas.getBoundingClientRect();
-  const x=(e.clientX-rect.left-offsetX)/scale;
-  const y=(e.clientY-rect.top-offsetY)/scale;
+  const clientX=e.touches?e.touches[0].clientX:e.clientX;
+  const clientY=e.touches?e.touches[0].clientY:e.clientY;
+  const x=(clientX-rect.left-offsetX)/scale;
+  const y=(clientY-rect.top-offsetY)/scale;
   return {x,y};
 }
 
-canvas.addEventListener("mousedown",e=>{
+function startDraw(e){
   closeDropdowns();
-  if(moveMode){dragging=true; dragStart={x:e.clientX,y:e.clientY}; return;}
-  if(fillMode){ const {x,y}=getCanvasPos(e); floodFill(x,y); saveState(); return; }
-  drawing=true; const {x,y}=getCanvasPos(e);
-  bctx.beginPath(); bctx.moveTo(x,y);
-});
-canvas.addEventListener("mouseup",()=>{drawing=false; dragging=false; saveState();});
-canvas.addEventListener("mousemove",e=>{
-  if(moveMode && dragging){
-    offsetX+=e.clientX-dragStart.x;
-    offsetY+=e.clientY-dragStart.y;
-    dragStart={x:e.clientX,y:e.clientY};
-    redraw(); return;
+  const pos=getCanvasCoords(e);
+  if(fillMode){
+    floodFill(Math.floor(pos.x),Math.floor(pos.y));
+    saveState();
+    return;
   }
-  if(!drawing||fillMode) return;
+  if(panMode){
+    drawing=true;
+    lastX=e.clientX||e.touches[0].clientX;
+    lastY=e.clientY||e.touches[0].clientY;
+    return;
+  }
+  drawing=true;
+  bctx.beginPath();
+  bctx.moveTo(pos.x,pos.y);
+}
+function moveDraw(e){
+  if(!drawing) return;
+  if(panMode){
+    const clientX=e.clientX||e.touches[0].clientX;
+    const clientY=e.clientY||e.touches[0].clientY;
+    offsetX+=clientX-lastX;
+    offsetY+=clientY-lastY;
+    lastX=clientX; lastY=clientY;
+    redraw();
+    return;
+  }
+  if(fillMode) return;
+  const pos=getCanvasCoords(e);
   hasDrawn=true; updatePlaceholder();
-  const {x,y}=getCanvasPos(e);
-  bctx.lineWidth=currentSize; bctx.lineCap="round"; bctx.strokeStyle=currentColor;
-  bctx.lineTo(x,y); bctx.stroke(); redraw();
-});
+  bctx.lineWidth=currentSize;
+  bctx.lineCap="round";
+  bctx.strokeStyle=currentColor;
+  bctx.lineTo(pos.x,pos.y);
+  bctx.stroke();
+  redraw();
+}
+function endDraw(){
+  if(drawing && !panMode) saveState();
+  drawing=false;
+}
 
-// mobile touch
-canvas.addEventListener("touchstart",e=>{
-  e.preventDefault();
-  const touch=e.touches[0];
-  const fake={clientX:touch.clientX, clientY:touch.clientY};
-  canvas.dispatchEvent(new MouseEvent("mousedown",fake));
-});
-canvas.addEventListener("touchmove",e=>{
-  e.preventDefault();
-  const touch=e.touches[0];
-  const fake={clientX:touch.clientX, clientY:touch.clientY};
-  canvas.dispatchEvent(new MouseEvent("mousemove",fake));
-});
-canvas.addEventListener("touchend",e=>{
-  e.preventDefault();
-  canvas.dispatchEvent(new MouseEvent("mouseup",{}));
-});
+canvas.addEventListener("mousedown",startDraw);
+canvas.addEventListener("mousemove",moveDraw);
+canvas.addEventListener("mouseup",endDraw);
+canvas.addEventListener("mouseleave",endDraw);
 
+canvas.addEventListener("touchstart",e=>{startDraw(e);});
+canvas.addEventListener("touchmove",e=>{moveDraw(e); e.preventDefault();},{passive:false});
+canvas.addEventListener("touchend",endDraw);
+
+// --- Paramètres
 function setColor(c){currentColor=c;}
 function setSize(s){currentSize=s;}
 function setFillColor(c){fillColor=c;}
 
 function setDrawMode(){
-  fillMode=false; moveMode=false;
-  document.getElementById("draw-btn").style.background= "var(--btn-hover)";
-  document.getElementById("fill-btn").style.background= "var(--btn)";
+  fillMode=false; panMode=false;
+  document.getElementById("draw-btn").style.background="var(--btn-hover)";
+  document.getElementById("fill-btn").style.background="var(--btn)";
   canvas.style.cursor="url('icons/cray-cursor.svg') 0 16, auto";
 }
 function setFillMode(){
-  fillMode=true; moveMode=false;
-  document.getElementById("fill-btn").style.background= "var(--btn-hover)";
-  document.getElementById("draw-btn").style.background= "var(--btn)";
+  fillMode=true; panMode=false;
+  document.getElementById("fill-btn").style.background="var(--btn-hover)";
+  document.getElementById("draw-btn").style.background="var(--btn)";
   canvas.style.cursor="url('icons/brush-cursor.svg') 0 16, auto";
 }
-function setMoveMode(){
-  moveMode=true; fillMode=false; drawing=false;
-  document.getElementById("draw-btn").style.background= "var(--btn)";
-  document.getElementById("fill-btn").style.background= "var(--btn)";
-  canvas.style.cursor="grab";
+function setPanMode(){
+  panMode=true; fillMode=false;
+  document.getElementById("draw-btn").style.background="var(--btn)";
+  document.getElementById("fill-btn").style.background="var(--btn)";
+  canvas.style.cursor="move";
 }
 
-// Undo/Redo
+// --- Undo/Redo
 function saveState(){
   undoStack.push(buffer.toDataURL());
   redoStack=[];
@@ -331,7 +349,7 @@ function redo(){
   img.src=last;
 }
 
-// Remplissage
+// --- Remplissage
 function setFillModeColor(){
   usePattern=false;
   document.getElementById("colorModeBtn").classList.add("active-option");
@@ -365,9 +383,9 @@ function setPatternSize(s){patternSize=parseInt(s);}
 function floodFill(x,y){
   const imageData=bctx.getImageData(0,0,buffer.width,buffer.height);
   const pixels=imageData.data;
-  const startPos=(Math.floor(y)*buffer.width+Math.floor(x))*4;
+  const startPos=(y*buffer.width+x)*4;
   const startR=pixels[startPos], startG=pixels[startPos+1], startB=pixels[startPos+2], startA=pixels[startPos+3];
-  const stack=[[Math.floor(x),Math.floor(y)]];
+  const stack=[[x,y]];
   const visited=new Set();
   while(stack.length){
     const [cx,cy]=stack.pop();
@@ -377,6 +395,7 @@ function floodFill(x,y){
     if(visited.has(key)) continue;
     if(pixels[pos]!==startR||pixels[pos+1]!==startG||pixels[pos+2]!==startB||pixels[pos+3]!==startA) continue;
     visited.add(key);
+
     if(usePattern && fillPattern){
       const px=(cx%patternSize), py=(cy%patternSize);
       const pctx=fillPattern.getContext("2d").getImageData(px,py,1,1).data;
@@ -385,17 +404,19 @@ function floodFill(x,y){
       const rgb=hexToRgb(fillColor);
       pixels[pos]=rgb.r; pixels[pos+1]=rgb.g; pixels[pos+2]=rgb.b; pixels[pos+3]=255;
     }
+
     stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
   }
   bctx.putImageData(imageData,0,0);
-  hasDrawn=true; updatePlaceholder(); redraw();
+  hasDrawn=true; updatePlaceholder();
+  redraw();
 }
 function hexToRgb(hex){
   const res=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return res?{r:parseInt(res[1],16),g:parseInt(res[2],16),b:parseInt(res[3],16)}:null;
 }
 
-// silhouette
+// --- Silhouettes
 function setSilhouette(src){silhouette=new Image(); silhouette.onload=redraw; silhouette.src=src;}
 function removeSilhouette(){silhouette=null; redraw();}
 function uploadSilhouette(e){
@@ -405,20 +426,28 @@ function uploadSilhouette(e){
   r.readAsDataURL(f);
 }
 
+// --- Redraw
 function updatePlaceholder(){placeholder.style.display=(hasDrawn||silhouette)?"none":"block";}
 function redraw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(buffer,0,0);
+
+  // 1. D'abord la silhouette
   if(silhouette){
     const ratio=Math.min(buffer.width/silhouette.width,buffer.height/silhouette.height)*0.8;
     let w=silhouette.width*ratio, h=silhouette.height*ratio;
     ctx.drawImage(silhouette,(buffer.width-w)/2,(buffer.height-h)/2,w,h);
   }
+
+  // 2. Ensuite le dessin
+  ctx.drawImage(buffer,0,0);
+
   updatePlaceholder();
 }
+
+// --- Clear & Download
 function clearDrawing(){
   bctx.clearRect(0,0,buffer.width,buffer.height);
   hasDrawn=false;
@@ -426,11 +455,9 @@ function clearDrawing(){
 }
 function download(){let a=document.createElement("a"); a.download="croquis.png"; a.href=canvas.toDataURL(); a.click();}
 
-// zoom
+// --- Zoom
 function zoomIn(){scale*=1.2; redraw();}
 function zoomOut(){scale/=1.2; redraw();}
-
-let dragging=false, dragStart={x:0,y:0};
 </script>
 </body>
 </html>
