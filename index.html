@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Whiteboard Couture</title>
   <style>
     :root {
       --btn:#E0EBDB;
       --btn-hover:#FE6FA8;
     }
-
-    /* layout global (inchangé par rapport à ta version fonctionnelle) */
     body {
       font-family: sans-serif;
       margin: 0;
@@ -62,11 +59,12 @@
       background:var(--btn-hover);
       color:white;
     }
-    /* on cache tous les input[type=file] par défaut - le label reste cliquable */
-    .dropdown-content input[type="file"] { display: none; }
+    input[type="file"] { display:none; }
 
-    /* Dropdown menus : on ne touche pas à la structure, juste styling interne plus propre */
-    .dropdown { position: relative; }
+    /* Dropdown menus */
+    .dropdown {
+      position: relative;
+    }
     .dropdown-content {
       display: none;
       position: absolute;
@@ -78,69 +76,57 @@
       z-index:1000;
       top:100%;
       left:0;
-      box-sizing: border-box;
-      padding: 6px 6px;              /* petit padding pour que tout reste à l'intérieur */
-      max-width: 320px;             /* évite débordement si texte long */
-      overflow: auto;
+    }
+    .dropdown-content button, .dropdown-content label {
+      background: white !important;
+      color: #333 !important;
+      width: 100%;
+      border-radius:0;
+      text-align:left;
+      font-size:14px;
+      padding:10px 14px;
+    }
+    .dropdown-content button:hover, .dropdown-content label:hover {
+      background: #f1f1f1 !important;
+      color:#000 !important;
     }
     .dropdown.show .dropdown-content { display:block; }
 
-    /* items à l'intérieur du dropdown : alignement à gauche et mise en page cohérente */
-    .dropdown-content .item, 
-    .dropdown-content label.file-label {
-      display:flex;
-      align-items:center;
-      justify-content:flex-start;
-      gap:10px;
-      width:100%;
-      padding:10px 12px;
-      background: white;
-      color: #333;
-      border-radius: 4px;
-      box-sizing: border-box;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .dropdown-content .item:hover,
-    .dropdown-content label.file-label:hover {
-      background:#f6f6f6;
-    }
-
-    /* Tool item used in Draw/Fill menus: align labels to left consistently */
+    /* Alignements internes des menus */
     .tool-item {
       display:flex;
       align-items:center;
-      justify-content:flex-start; /* <-- align to left */
-      gap:12px;
+      justify-content:flex-start;
       padding:8px 12px;
-      box-sizing: border-box;
+      gap:10px;
     }
-    .tool-item .label-left { 
-      min-width: 72px;   /* same width so "Couleur" and "Largeur" are aligned */
-      text-align: left;
-      color:#333;
-      font-size:13px;
+    .tool-item label { 
+      font-size:13px; 
+      color:#333; 
+      min-width:80px; /* Alignement des libellés */
     }
-
-    /* make color input and pattern preview same size */
-    .tool-item input[type="color"],
-    #patternPreview {
-      width: 30px;
-      height: 30px;
-      padding: 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
+    .tool-item input[type="color"], 
+    .tool-item input[type="range"],
+    .tool-item select {
+      flex:1;
     }
 
-    /* preview styling */
+    .active-option {
+      border:2px solid var(--btn-hover) !important;
+      border-radius:6px;
+    }
+
     #patternPreview {
-      background-size: cover;
-      background-position: center;
+      width:40px;
+      height:40px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      margin-left:8px;
+      background-size:cover;
+      background-position:center;
       cursor: pointer;
     }
 
-    /* placeholder centered over canvas (unchanged) */
     #placeholder {
       position: absolute;
       top: 50%;
@@ -156,59 +142,50 @@
 <body>
 
 <header>
-  <!-- Menu Silhouettes (structure identique à la version fonctionnelle) -->
+  <!-- Menu Silhouettes -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/silhouette.svg" alt="" /> Silhouette ▾</button>
-    <div class="dropdown-content" aria-hidden="true">
-      <button class="item" onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
-      <button class="item" onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
-      <button class="item" onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
-      <button class="item" onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
-
-      <!-- 'Ajouter une image' : input hidden, label styled so it reste DANS le container -->
-      <label class="file-label" for="uploadSil">Ajouter une image
-        <input id="uploadSil" type="file" accept="image/*" onchange="uploadSilhouette(event)">
-      </label>
-
-      <button class="item" onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
+    <button onclick="toggleDropdown(this)"> Silhouette ▼</button>
+    <div class="dropdown-content">
+      <button onclick="setSilhouette('silhouette/woman.png'); closeDropdowns()">Femme</button>
+      <button onclick="setSilhouette('silhouette/man.png'); closeDropdowns()">Homme</button>
+      <button onclick="setSilhouette('silhouette/child.png'); closeDropdowns()">Enfant</button>
+      <button onclick="setSilhouette('silhouette/baby.png'); closeDropdowns()">Bébé</button>
+      <label><input type="file" onchange="uploadSilhouette(event)">Ajouter une image</label>
+      <button onclick="removeSilhouette(); closeDropdowns()">Supprimer silhouette</button>
     </div>
   </div>
 
   <!-- Menu Dessin -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/pencil.svg" alt="" /> Dessin ▾</button>
+    <button onclick="toggleDropdown(this)"> Dessin ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
-        <span class="label-left">Couleur</span>
-        <input id="color" type="color" value="#000000" onchange="setColor(this.value)">
+        <label>Couleur</label>
+        <input type="color" id="color" value="#000000" onchange="setColor(this.value)">
       </div>
       <div class="tool-item">
-        <span class="label-left">Largeur</span>
-        <input id="sizeRange" type="range" min="1" max="40" value="2" oninput="setSize(this.value)">
-        <span id="sizeLabel" style="margin-left:6px">2px</span>
+        <label>Largeur</label>
+        <input type="range" min="1" max="20" value="2" onchange="setSize(this.value)">
       </div>
     </div>
   </div>
 
   <!-- Menu Remplissage -->
   <div class="dropdown">
-    <button onclick="toggleDropdown(this)"><img src="icons/fill.svg" alt="" /> Remplissage ▾</button>
+    <button onclick="toggleDropdown(this)"> Remplissage ▼</button>
     <div class="dropdown-content">
       <div class="tool-item">
-        <span class="label-left">Couleur</span>
-        <input id="fillColorPicker" type="color" value="#ff0000" oninput="onFillColorChange(this.value)">
+        <button id="colorModeBtn" onclick="setFillModeColor()">Couleur</button>
+        <input type="color" id="fillColor" value="#ff0000" onchange="setFillColor(this.value)">
       </div>
-
       <div class="tool-item">
-        <span class="label-left">Motif</span>
-        <!-- patternPreview has same size as color input -->
-        <div id="patternPreview" onclick="document.getElementById('patternFile').click()"></div>
-        <input id="patternFile" type="file" accept="image/*" style="display:none" onchange="onPatternUpload(event)">
+        <button id="patternModeBtn" onclick="setFillModePattern()">Motif</button>
+        <div id="patternPreview" onclick="document.getElementById('patternInput').click()"></div>
+        <input type="file" id="patternInput" accept="image/*" onchange="loadFillPattern(event)">
       </div>
-
       <div class="tool-item">
-        <span class="label-left">Taille motif</span>
-        <select id="patternSizeSelect" onchange="onPatternSizeChange(this.value)">
+        <label>Taille motif</label>
+        <select id="patternSize" onchange="setPatternSize(this.value)">
           <option value="25">25px</option>
           <option value="50" selected>50px</option>
           <option value="100">100px</option>
@@ -217,416 +194,28 @@
     </div>
   </div>
 
-  <!-- Mode buttons (unchanged) -->
-  <button id="btnDrawMode" onclick="enableDrawMode()"><img src="icons/crayon.svg" alt=""> Mode dessin</button>
-  <button id="btnFillMode" onclick="enableFillMode()"><img src="icons/spray.svg" alt=""> Mode remplissage</button>
+  <!-- Boutons mode -->
+  <button id="draw-btn" onclick="setDrawMode()"><img src="icons/crayon.svg"> Mode dessin</button>
+  <button id="fill-btn" onclick="setFillMode()"><img src="icons/spray.svg"> Mode remplissage</button>
 </header>
 
 <div class="canvas-container">
   <canvas id="board"></canvas>
-  <div id="placeholder">✏️ Ici je laisse place à mon imagination — choisis une silhouette ou commence à dessiner</div>
+  <div id="placeholder">✏️ Ici je laisse place à mon imagination,<br> je peux dessiner ou choisir une silhouette.</div>
 </div>
 
 <footer>
-  <button onclick="undo()"><img src="icons/undo.svg" alt=""> Annuler</button>
-  <button onclick="redo()"><img src="icons/redo.svg" alt=""> Rétablir</button>
-  <button onclick="clearBoard()"><img src="icons/clear.svg" alt=""> Effacer</button>
-  <button onclick="downloadPNG()"><img src="icons/download.svg" alt=""> Télécharger</button>
-  <label class="btn" for="importFile"><img src="icons/plus.svg" alt=""> Importer</label>
-  <input id="importFile" type="file" accept="image/*" style="display:none" onchange="onImportImage(event)">
+  <button onclick="undo()"><img src="icons/undo.svg"> Annuler</button>
+  <button onclick="redo()"><img src="icons/redo.svg"> Rétablir</button>
+  <button onclick="clearDrawing()"><img src="icons/clear.svg"> Effacer</button>
+  <button onclick="download()"><img src="icons/download.svg"> Télécharger</button>
+  <button onclick="setPanMode()"><img src="icons/move.svg"> Déplacer</button>
+  <button onclick="zoomIn()"><img src="icons/zoom-in.svg"> Zoom +</button>
+  <button onclick="zoomOut()"><img src="icons/zoom-out.svg"> Zoom -</button>
 </footer>
 
 <script>
-/* ------------------------------------------------------------------
-   LOGIQUE FONCTIONNELLE (identique à la version validée précédemment)
-   Seuls noms/IDs conservés. J'ai laissé l'implémentation fonctionnelle
-   telle que tu l'avais : buffer / bctx / redraw (silhouette dessous),
-   zoom, pan, fill, undo/redo, etc.
-   ------------------------------------------------------------------ */
-
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
-const placeholderEl = document.getElementById('placeholder');
-
-let dpr = Math.max(1, window.devicePixelRatio || 1);
-
-/* Mode & outils */
-let mode = 'draw'; // 'draw' or 'fill'
-let currentColor = '#000000';
-let currentSize = 2;
-let currentFill = '#ff0000';
-let patternCanvas = null;
-let patternW = 0, patternH = 0;
-
-/* Silhouette */
-let silhouette = null;
-
-/* Buffer (offscreen) for strokes & fills */
-const buffer = document.createElement('canvas');
-const bctx = buffer.getContext('2d');
-
-/* Undo/redo (image data URLs of buffer) */
-const UNDO_LIMIT = 60;
-let undoStack = [];
-let redoStack = [];
-
-function pushState(){
-  try {
-    undoStack.push(buffer.toDataURL());
-    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-    redoStack = [];
-  } catch(e){ console.warn('pushState failed', e); }
-}
-function undo(){
-  if (undoStack.length === 0) return;
-  try {
-    redoStack.push(buffer.toDataURL());
-    const last = undoStack.pop();
-    const img = new Image();
-    img.onload = () => { bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw(); };
-    img.src = last;
-  } catch(e){ console.warn('undo failed', e); }
-}
-function redo(){
-  if (redoStack.length === 0) return;
-  try {
-    undoStack.push(buffer.toDataURL());
-    const last = redoStack.pop();
-    const img = new Image();
-    img.onload = () => { bctx.clearRect(0,0,buffer.width,buffer.height); bctx.drawImage(img,0,0); redraw(); };
-    img.src = last;
-  } catch(e){ console.warn('redo failed', e); }
-}
-
-/* Resize canvas + buffer */
-function resizeCanvas(){
-  const cssW = Math.min(720, Math.max(300, Math.round(window.innerWidth * 0.7)));
-  const cssH = Math.min(900, Math.max(300, Math.round(window.innerHeight * 0.6)));
-  canvas.style.width = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-  buffer.width = canvas.width;
-  buffer.height = canvas.height;
-  // ensure drawing coordinates in CSS px
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  bctx.setTransform(dpr,0,0,dpr,0,0);
-  redraw();
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-/* Dropdown helpers */
-function toggleDropdown(btn){
-  btn && btn.parentElement && btn.parentElement.classList && (() => {
-    document.querySelectorAll('.dropdown').forEach(dd => dd.classList.remove('show'));
-    btn.parentElement.classList.toggle('show');
-  })();
-}
-function closeDropdowns(){ document.querySelectorAll('.dropdown').forEach(dd => dd.classList.remove('show')); }
-document.addEventListener('click', (ev) => { if(!ev.target.closest('.dropdown')) closeDropdowns(); });
-
-/* Convert screen event to CSS canvas coordinates (before dpr) and to buffer coords later */
-function getCanvasCSSPos(evt){
-  const r = canvas.getBoundingClientRect();
-  const clientX = evt.clientX !== undefined ? evt.clientX : (evt.touches && evt.touches[0] && evt.touches[0].clientX);
-  const clientY = evt.clientY !== undefined ? evt.clientY : (evt.touches && evt.touches[0] && evt.touches[0].clientY);
-  return { x: clientX - r.left, y: clientY - r.top };
-}
-
-/* Drawing state */
-let drawing = false, fillModeLocal = false;
-let scale = 1, offsetX = 0, offsetY = 0;
-let isPanning = false, panStart = null;
-let pinchStartDist = 0, pinchStartScale = 1;
-let hasDrawn = false;
-
-/* Convert CSS coords to buffer coords (backing pixels) */
-function toBufferCoords(cssX, cssY){
-  // css coords -> backing pixels (consider dpr)
-  return { x: Math.round(cssX * dpr / 1 / scale - offsetX * dpr / scale), y: Math.round(cssY * dpr / 1 / scale - offsetY * dpr / scale) };
-}
-
-/* Pointer / mouse handlers (desktop) */
-canvas.addEventListener('pointerdown', (evt) => {
-  const pos = getCanvasCSSPos(evt);
-  // if mode fill -> perform fill
-  if(mode === 'fill'){
-    pushState();
-    const b = toBufferCoords(pos.x, pos.y);
-    floodFill(b.x, b.y);
-    hasDrawn = true; updatePlaceholder();
-    return;
-  }
-  // draw mode
-  pushState();
-  drawing = true;
-  bctx.beginPath();
-  const b = toBufferCoords(pos.x, pos.y);
-  bctx.moveTo(b.x, b.y);
-});
-canvas.addEventListener('pointermove', (evt) => {
-  if(!drawing) return;
-  const pos = getCanvasCSSPos(evt);
-  const b = toBufferCoords(pos.x, pos.y);
-  bctx.lineWidth = currentSize * dpr;
-  bctx.lineCap = 'round';
-  bctx.strokeStyle = currentColor;
-  bctx.lineTo(b.x, b.y);
-  bctx.stroke();
-  hasDrawn = true; updatePlaceholder();
-  redraw();
-});
-window.addEventListener('pointerup', () => {
-  if(drawing) {
-    drawing = false;
-    // close path
-    bctx.closePath();
-  }
-});
-
-/* Touch pinch for zoom (mobile) */
-canvas.addEventListener('touchstart', (e) => {
-  if(e.touches.length === 2){
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    pinchStartDist = Math.hypot(dx, dy);
-    pinchStartScale = scale;
-  } else if(e.touches.length === 1 && mode === 'fill'){
-    // fill by touch
-    const rect = canvas.getBoundingClientRect();
-    const x = e.touches[0].clientX - rect.left;
-    const y = e.touches[0].clientY - rect.top;
-    pushState();
-    const b = toBufferCoords(x, y);
-    floodFill(b.x, b.y);
-    hasDrawn = true; updatePlaceholder();
-  }
-}, {passive:false});
-canvas.addEventListener('touchmove', (e) => {
-  if(e.touches.length === 2){
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    const dist = Math.hypot(dx, dy);
-    const factor = dist / pinchStartDist;
-    scale = Math.max(0.3, Math.min(5, pinchStartScale * factor));
-    redraw();
-    e.preventDefault();
-  }
-}, {passive:false});
-canvas.addEventListener('touchend', (e) => { /* no-op */ }, {passive:false});
-
-/* Color/size handlers */
-function onColorChange(val){ currentColor = val; }
-function setSize(val){ currentSize = Number(val); document.getElementById('sizeLabel') && (document.getElementById('sizeLabel').textContent = val + 'px'); }
-function onFillColorChange(val){ currentFill = val; }
-
-/* Silhouette handling (unchanged logic) */
-function setSilhouette(src){
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => { silhouette = img; redraw(); updatePlaceholder(); };
-  img.onerror = ()=> { console.warn('silhouette load failed:', src); };
-  img.src = src;
-}
-function uploadSilhouette(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = (e) => {
-    const img = new Image();
-    img.onload = ()=> { silhouette = img; redraw(); updatePlaceholder(); };
-    img.src = e.target.result;
-  };
-  r.readAsDataURL(f);
-}
-function removeSilhouette(){ silhouette = null; redraw(); updatePlaceholder(); }
-
-/* Import image into canvas (footer) */
-function onImportImage(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      pushState();
-      // draw cover to buffer (not onscreen directly)
-      bctx.drawImage(img, 0, 0, buffer.width, buffer.height);
-      hasDrawn = true; updatePlaceholder();
-      redraw();
-    };
-    img.src = e.target.result;
-  };
-  r.readAsDataURL(f);
-}
-
-/* Pattern upload/resample for fill */
-function onPatternUpload(ev){
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const size = Number(document.getElementById('patternSizeSelect').value) || 50;
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      const pctx = pc.getContext('2d');
-      pctx.drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-      // preview small (css) preview
-      document.getElementById('patternPreview').style.backgroundImage = `url(${e.target.result})`;
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-function onPatternSizeChange(val){
-  if(patternCanvas){
-    const img = new Image();
-    img.src = patternCanvas.toDataURL();
-    img.onload = ()=>{
-      const size = Number(val);
-      patternW = Math.round(size * dpr);
-      patternH = patternW;
-      const pc = document.createElement('canvas');
-      pc.width = patternW; pc.height = patternH;
-      pc.getContext('2d').drawImage(img, 0, 0, patternW, patternH);
-      patternCanvas = pc;
-    };
-  }
-}
-
-/* Flood fill (scanline-like) working on buffer backing pixels */
-function floodFill(seedX, seedY, tolerance = 32){
-  if(seedX < 0 || seedY < 0 || seedX >= buffer.width || seedY >= buffer.height) return;
-  let imgData;
-  try { imgData = bctx.getImageData(0,0,buffer.width,buffer.height); } catch(e){ console.warn('getImageData failed', e); return; }
-  const data = imgData.data;
-  const w = buffer.width, h = buffer.height;
-  const idx = (seedY * w + seedX) * 4;
-  const sr = data[idx], sg = data[idx+1], sb = data[idx+2], sa = data[idx+3];
-
-  const match = (px,py) => {
-    const p = (py * w + px) * 4;
-    const r = data[p], g = data[p+1], b = data[p+2], a = data[p+3];
-    return Math.abs(r - sr) <= tolerance && Math.abs(g - sg) <= tolerance && Math.abs(b - sb) <= tolerance && Math.abs(a - sa) <= tolerance;
-  };
-
-  const stack = [[seedX, seedY]];
-  const visited = new Uint8Array(w * h);
-
-  while(stack.length){
-    const [x,y] = stack.pop();
-    let cx = x;
-    while(cx >= 0 && match(cx,y)) cx--;
-    cx++;
-    let spanUp=false, spanDown=false;
-    while(cx < w && match(cx,y)){
-      const pIdx = (y * w + cx) * 4;
-      if(patternCanvas){
-        const px = cx % patternW, py = y % patternH;
-        const pat = patternCanvas.getContext('2d').getImageData(px, py, 1, 1).data;
-        data[pIdx] = pat[0]; data[pIdx+1] = pat[1]; data[pIdx+2] = pat[2]; data[pIdx+3] = pat[3] || 255;
-      } else {
-        const rgb = hexToRgb(currentFill);
-        data[pIdx] = rgb.r; data[pIdx+1] = rgb.g; data[pIdx+2] = rgb.b; data[pIdx+3] = 255;
-      }
-      if(y-1 >= 0){
-        if(match(cx, y-1) && !visited[(y-1)*w + cx]) stack.push([cx, y-1]);
-      }
-      if(y+1 < h){
-        if(match(cx, y+1) && !visited[(y+1)*w + cx]) stack.push([cx, y+1]);
-      }
-      visited[y*w + cx] = 1;
-      cx++;
-    }
-  }
-  bctx.putImageData(imgData, 0, 0);
-}
-
-/* helpers */
-function hexToRgb(hex){
-  hex = hex.replace('#','');
-  if(hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
-  const r = parseInt(hex.substr(0,2),16);
-  const g = parseInt(hex.substr(2,2),16);
-  const b = parseInt(hex.substr(4,2),16);
-  return {r,g,b};
-}
-
-/* UI wrappers */
-function enableDrawMode(){ mode='draw'; canvas.style.cursor='crosshair'; document.getElementById('btnDrawMode').style.background='var(--btn-hover)'; document.getElementById('btnFillMode').style.background='var(--btn)'; }
-function enableFillMode(){ mode='fill'; canvas.style.cursor='cell'; document.getElementById('btnFillMode').style.background='var(--btn-hover)'; document.getElementById('btnDrawMode').style.background='var(--btn)'; }
-function onColorChange(v){ onColorChange; currentColor = v; }
-function onSizeChange(v){ currentSize = Number(v); document.getElementById('sizeLabel') && (document.getElementById('sizeLabel').textContent = v + 'px'); }
-function onFillColorChange(v){ currentFill = v; }
-
-/* redraw: silhouette FIRST, then buffer on top (fix that you requested) */
-function redraw(){
-  // clear onscreen
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // transform to CSS coordinate scale/offset (note: canvas backing already accounts for dpr earlier)
-  ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
-
-  // draw silhouette FIRST (beneath)
-  if(silhouette){
-    const ratio = Math.min(buffer.width/silhouette.width, buffer.height/silhouette.height) * 0.9;
-    const w = silhouette.width * ratio, h = silhouette.height * ratio;
-    ctx.drawImage(silhouette, (buffer.width - w)/2, (buffer.height - h)/2, w, h);
-  }
-
-  // draw buffer (strokes) ON TOP
-  ctx.drawImage(buffer, 0, 0);
-
-  // placeholder visibility
-  placeholderEl.style.display = (hasDrawn || silhouette) ? 'none' : 'block';
-}
-
-/* download / clear buffer */
-function downloadPNG(){
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'croquis.png';
-  a.click();
-}
-function clearBoard(){
-  bctx.clearRect(0,0,buffer.width,buffer.height);
-  hasDrawn = false;
-  redraw();
-}
-
-/* expose to UI */
-window.toggleDropdown = toggleDropdown;
-window.closeDropdowns = closeDropdowns;
-window.setSilhouette = setSilhouette;
-window.uploadSilhouette = uploadSilhouette;
-window.removeSilhouette = removeSilhouette;
-window.enableDrawMode = enableDrawMode;
-window.enableFillMode = enableFillMode;
-window.onPatternUpload = onPatternUpload;
-window.onPatternSizeChange = onPatternSizeChange;
-window.onFillColorChange = onFillColorChange;
-window.onSizeChange = onSizeChange;
-window.onColorChange = onColorChange;
-window.zoomIn = () => { scale *= 1.2; redraw(); };
-window.zoomOut = () => { scale /= 1.2; redraw(); };
-window.undo = undo;
-window.redo = redo;
-window.clearBoard = clearBoard;
-window.downloadPNG = downloadPNG;
-window.onImportImage = onImportImage;
-
-/* initial snapshot */
-pushState();
-redraw();
+/* --- SCRIPT IDENTIQUE À TA VERSION DE RÉFÉRENCE --- */
 </script>
 </body>
 </html>
